@@ -1,5 +1,11 @@
 import sys, cPickle
-from PyQt4 import QtCore, QtNetwork
+try:
+    from PyQt4 import QtCore, QtNetwork
+    from PyQt4.QtCore import pyqtSignal as qtSignal
+except ImportError:
+    from PySide import QtCore, QtNetwork
+    from PySide.QtCore import Signal as qtSignal
+    
 
 DEFAULT_PORT = 9090
 DEFAULT_TIMEOUT = 5000
@@ -19,8 +25,8 @@ def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
 
 class MessageBusClient(QtCore.QObject):
     
-    receivedEvent = QtCore.pyqtSignal(str, object)
-    disconnected = QtCore.pyqtSignal()
+    receivedEvent = qtSignal(str, object)
+    disconnected = qtSignal()
     
     def __init__(self):
         QtCore.QObject.__init__(self)
@@ -101,8 +107,8 @@ class MessageBusClient(QtCore.QObject):
 
 class ServerClientConnection(QtCore.QObject):
     
-    eventPublished = QtCore.pyqtSignal(str, object)
-    disconnected = QtCore.pyqtSignal()
+    eventPublished = qtSignal(str, object)
+    disconnected = qtSignal()
     
     def __init__(self, connection):
         QtCore.QObject.__init__(self)
@@ -171,9 +177,9 @@ class ServerClientConnection(QtCore.QObject):
 
 class MessageBusServer(QtCore.QObject):
     
-    clientConnected = QtCore.pyqtSignal(object)
-    clientDisconnected = QtCore.pyqtSignal(object)
-    eventPublished = QtCore.pyqtSignal(str, object)
+    clientConnected = qtSignal(object)
+    clientDisconnected = qtSignal(object)
+    eventPublished = qtSignal(str, object)
     
     def __init__(self, port = DEFAULT_PORT):
         QtCore.QObject.__init__(self)
