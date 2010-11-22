@@ -95,7 +95,7 @@ class MessageBusClient(QtCore.QObject):
             if data[0] == TYPE_NAK:
                 raise Exception("server reported: %s" % data[1])
             
-        except Exception as e:
+        except Exception, e:
             errorstr = type(e).__name__ + ", " + str(e)
             sys.stderr.write(errorstr + "\n")
 
@@ -162,7 +162,7 @@ class ServerClientConnection(QtCore.QObject):
             # packet not recognized
             raise Exception("unrecognized instruction in packet")
             
-        except Exception as e:
+        except Exception, e:
             errorstr = type(e).__name__ + ", " + str(e)
             # notify the client about the error
             self._sendPacket([TYPE_NAK, errorstr])
