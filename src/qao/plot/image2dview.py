@@ -215,8 +215,11 @@ class ImageWidget(QtGui.QGraphicsView):
         
         # set defaults
         self.setZRange(None, None)
-        self.imageData = numpy.zeros([0,0])
+        self.imageData = numpy.zeros([1,1])
         self.allowScaling = False
+    
+    def heightForWidth(self, w):
+        return int(self.imageData.shape[0] * float(w)/self.imageData.shape[1])
     
     def setAllowScaling(self, allow):
         self.allowScaling = allow
