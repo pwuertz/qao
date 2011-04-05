@@ -4,8 +4,7 @@
 #############################################
 
 import os
-import warnings
-import numpy, math
+import numpy
 import struct, bz2
 import xml.dom.minidom
 
@@ -36,7 +35,7 @@ class qmi:
             
       return new
 
-   def __buildXML(self):
+   def __buildXML(self, compr):
       "build the xml information block"
       # create xml document
       doc = xml.dom.minidom.Document()
@@ -59,7 +58,7 @@ class qmi:
       qmi_image.appendChild(qmi_dtype)
       # save compression
       qmi_compr = doc.createElement("compression")
-      qmi_compr.appendChild(doc.createTextNode("bz2"))
+      qmi_compr.appendChild(doc.createTextNode(compr))
       qmi_image.appendChild(qmi_compr)
       
       # save parameters
@@ -79,7 +78,7 @@ class qmi:
        """       
        self.image_data = utils.shift(self.image_data, pixels_x, pixels_y)
        
-   def save(self, filename = None):
+   def save(self, filename = None, compr = "bz2"):
       "save image to file, if no filename is given, try to reuse old filename"
       if not filename:
           if not self.filename: raise RuntimeError("don't know where to save the file")
@@ -88,12 +87,16 @@ class qmi:
       # open file
       # TODO: check for errors
       f = open(filename, "wb")
-     
-      # save header, compressed data, xml
-      data = bz2.compress(self.image_data.data)
+      
+      # compress
+      if compr == "bz2":
+          data = bz2.compress(self.image_data.data)
+      else:
+          compr == "raw"
+          data = self.image_data.data
       f.write(struct.pack("!4sQ", "QMI2", len(data)))
       f.write(data)
-      f.write(self.__buildXML())
+      f.write(self.__buildXML(compr = compr))
       
    def saveAscii(self, filename):
        """
