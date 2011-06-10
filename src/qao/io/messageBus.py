@@ -213,8 +213,8 @@ class MessageBusServer(QtCore.QObject):
 if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-	
-	print "Starting MessageServer at port %d" % DEFAULT_PORT
+    
+    print "Starting MessageServer at port %d" % DEFAULT_PORT
     
     class ConsoleServer(MessageBusServer):
         def __init__(self):
