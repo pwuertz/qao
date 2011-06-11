@@ -6,10 +6,6 @@ except ImportError:
     from PySide import QtCore, QtNetwork
     from PySide.QtCore import Signal as qtSignal
 
-import signal
-signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-
 
 class ConsoleClient(messageBus.MessageBusClient):
 	def __init__(self):
