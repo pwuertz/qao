@@ -13,10 +13,10 @@ TYPE_ACK         = "ack"
 TYPE_NAK         = "nak"
 
 class tcpPkgClient():
-	"""
-	Low level class that handles the sending and receiving of data organised in packets via tcp.
-	The content of a packet is not interpreted, this should be done by derived classe.
-	"""
+    """
+    Low level class that handles the sending and receiving of data organised in packets via tcp.
+    The content of a packet is not interpreted, this should be done by derived classe.
+    """
     def __init__(self):
         self.clientSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -85,12 +85,8 @@ class MessageBusClient(tcpPkgClient):
         if topic in self.subscriptionCallbacks: self.subscriptionCallbacks[topic](topic,data)
 
     def _sendPacketPickled(self,data):
-        picklestarttime = time.time()
-        dataRaw = cPickle.dumps(data, -1)
-        print "Pickle took %.2f s"%(time.time()-picklestarttime)
-        self._sendPacket(dataRaw)
+        self._sendPacket(cPickle.dumps(data, -1))
         
-
     def _recvPacketPickled(self):
         try:
             dataRaw = self._recvPacket()
@@ -118,7 +114,7 @@ if __name__ == "__main__":
     def printdummy(topic,data):
         print "%s: %s (Dauer:%.2f)"%(topic,data[0],time.time()-float(data[1]))
 
-	#initiate client connection
+    #initiate client connection
     client = MessageBusClient()
     client.connectToServer()
     
