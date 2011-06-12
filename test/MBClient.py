@@ -6,6 +6,8 @@ except ImportError:
     from PySide import QtCore, QtNetwork
     from PySide.QtCore import Signal as qtSignal
 
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 class ConsoleClient(messageBus.MessageBusClient):
 	def __init__(self):
@@ -22,7 +24,7 @@ serv = ConsoleClient()
 serv.connectToServer("localhost")
 
 #subscribe
-serv.subscribe("testing")
+#serv.subscribe("testing")
 
 #publish event
 serv.publishEvent("testing",["foo","bar"])
