@@ -1,4 +1,4 @@
-import sys
+import sys,os
 from PyQt4 import QtCore, QtGui
 import QMBClient
 
@@ -6,12 +6,14 @@ class MBChatWidget(QtGui.QWidget):
     def __init__(self,qmbClient,name,parent=None):
         QtGui.QWidget.__init__(self, parent)
         
+        self.parent = parent
         self.qmbClient = qmbClient
         self.name = name
         self.setGeometry(QtCore.QRect(0, 0, 801, 531))
         
         self.verticalLayout = QtGui.QVBoxLayout(self)
         self.textEdit = QtGui.QTextEdit(self)
+        self.textEdit.setReadOnly(True)
         self.verticalLayout.addWidget(self.textEdit)
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.lineEdit = QtGui.QLineEdit(self)
@@ -24,7 +26,7 @@ class MBChatWidget(QtGui.QWidget):
         self.connect(self.lineEdit, QtCore.SIGNAL('returnPressed()'), self.send)
         
     def send(self):
-        self.qmbClient.publishEvent("MBChat.%s"%self.name,["thomas",self.lineEdit.text()])
+        self.qmbClient.publishEvent("MBChat.%s"%self.name,[self.parent.userName,self.lineEdit.text()])
         self.lineEdit.clear()
         
     def addLine(self,topic,data):
@@ -41,12 +43,19 @@ class MBChatMainWindow(QtGui.QWidget):
     def __init__(self,parent=None):
         QtGui.QWidget.__init__(self, parent)
         
+        
+        
+        #Tab View
         self.tabWidget = QtGui.QTabWidget(self)
         self.tabWidget.setGeometry(QtCore.QRect(0, 0, 811, 561))
         
-        self.connected = False
-        self.host, ok = QtGui.QInputDialog.getText(self, 'Input Dialog','Server to connect to:')
+        
+        self.connected = False  
+        self.host, ok = QtGui.QInputDialog.getText(self, 'Server address','Server to connect to:')
+        
+        self.userName, ok = QtGui.QInputDialog.getText(self, 'username','Your username:')
         self.connect(self.host,9090)
+        
         
         
     
