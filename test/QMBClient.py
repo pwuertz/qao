@@ -36,7 +36,7 @@ if __name__ == "__main__":
     app = QtCore.QCoreApplication([])
     
     #define new client
-    serv = QConsoleClient()
+    serv = QMessageBusClient()
     serv.connectToServer("localhost")
     
     #subscribe

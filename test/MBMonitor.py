@@ -1,4 +1,4 @@
-import sys,os
+import sys,os,time
 from PyQt4 import QtCore, QtGui
 import QMBClient
 
@@ -26,11 +26,17 @@ class MBChatWidget(QtGui.QWidget):
         self.connect(self.lineEdit, QtCore.SIGNAL('returnPressed()'), self.send)
         
     def send(self):
-        self.qmbClient.publishEvent("MBChat.%s"%self.name,[self.parent.userName,self.lineEdit.text()])
+        self.qmbClient.publishEvent(self.name,eval(str(self.lineEdit.text())))
         self.lineEdit.clear()
         
     def addLine(self,topic,data):
-        self.textEdit.append("<tr><td><font color='#FF0000'>%s</font></td><td>%s</td></tr>"%(data[0],data[1]))
+        tableStr = "<table><tr><th rowspan='%i' style='padding-right:25px'><font color='#FF0000'>%s</font></th><td>Arg 1:</td><td style='border-top:1px solid black; margin:0px;'>%s</td></tr>"%(len(data),time.strftime("%d. %m. %H:%M:%S"),data[0])
+        i=2
+        for datum in data[1:]:
+            tableStr += "<tr><td>Arg %i:</td><td>%s</td></tr>"%(i,datum)
+            i+=1
+        tableStr += "</table><br/>"
+        self.textEdit.append(tableStr)
 
 class MBChatConnectDialog(QtGui.QDialog):
     def __init__(self,parent=None):
@@ -46,7 +52,7 @@ class MBChatMainWindow(QtGui.QWidget):
         
         self.verticalLayout = QtGui.QVBoxLayout(self)
         
-        self.addButton = QtGui.QPushButton("Add Channel",self)
+        self.addButton = QtGui.QPushButton("Add Sub",self)
         self.verticalLayout.addWidget(self.addButton)
         #Tab View
         self.tabWidget = QtGui.QTabWidget(self)
@@ -58,7 +64,6 @@ class MBChatMainWindow(QtGui.QWidget):
         self.connected = False  
         self.host, ok = QtGui.QInputDialog.getText(self, 'Server address','Server to connect to:')
         
-        self.userName, ok = QtGui.QInputDialog.getText(self, 'username','Your username:')
         self.mbConnect(self.host,9090)
         
         
@@ -70,13 +75,13 @@ class MBChatMainWindow(QtGui.QWidget):
         self.connected = True
     
     def chatAdder(self):
-       chatName, ok = QtGui.QInputDialog.getText(self, 'Chat Name','Chatroom:') 
+       chatName, ok = QtGui.QInputDialog.getText(self, 'Subscription','Sub:') 
        self.addChat(chatName)
         
     def addChat(self,name):
         if self.connected:
             newChatWidget = MBChatWidget(self.qmbClient,name,parent=self)
-            self.qmbClient.subscribe("MBChat.%s"%name,callback=newChatWidget.addLine)
+            self.qmbClient.subscribe(name,callback=newChatWidget.addLine)
             self.tabWidget.addTab(newChatWidget,name)
             
 app = QtGui.QApplication(sys.argv)
