@@ -2,7 +2,7 @@ import sys,os,time
 from PyQt4 import QtCore, QtGui
 import QMBClient
 
-class MBChatWidget(QtGui.QWidget):
+class MBSubWidget(QtGui.QWidget):
     def __init__(self,qmbClient,name,parent=None):
         QtGui.QWidget.__init__(self, parent)
         
@@ -38,14 +38,14 @@ class MBChatWidget(QtGui.QWidget):
         tableStr += "</table><br/>"
         self.textEdit.append(tableStr)
 
-class MBChatConnectDialog(QtGui.QDialog):
+class MBSubConnectDialog(QtGui.QDialog):
     def __init__(self,parent=None):
         QtGui.QDialog.__init__(self, parent)
         self.setModal(True)
         
 
 
-class MBChatMainWindow(QtGui.QWidget):
+class MBSubMainWindow(QtGui.QWidget):
     def __init__(self,parent=None):
         QtGui.QWidget.__init__(self, parent)
         
@@ -59,7 +59,7 @@ class MBChatMainWindow(QtGui.QWidget):
         self.tabWidget.setGeometry(QtCore.QRect(0, 0, 811, 561))
         self.verticalLayout.addWidget(self.tabWidget)
         
-        self.connect(self.addButton, QtCore.SIGNAL('clicked()'), self.chatAdder)
+        self.connect(self.addButton, QtCore.SIGNAL('clicked()'), self.sCubAdder)
         
         self.connected = False  
         self.host, ok = QtGui.QInputDialog.getText(self, 'Server address','Server to connect to:')
@@ -74,18 +74,18 @@ class MBChatMainWindow(QtGui.QWidget):
         self.qmbClient.connectToServer(host,port)
         self.connected = True
     
-    def chatAdder(self):
-       chatName, ok = QtGui.QInputDialog.getText(self, 'Subscription','Sub:') 
-       self.addChat(chatName)
+    def subAdder(self):
+       SubName, ok = QtGui.QInputDialog.getText(self, 'Subscription','Sub:') 
+       self.addSub(SubName)
         
-    def addChat(self,name):
+    def addSub(self,name):
         if self.connected:
-            newChatWidget = MBChatWidget(self.qmbClient,name,parent=self)
-            self.qmbClient.subscribe(name,callback=newChatWidget.addLine)
-            self.tabWidget.addTab(newChatWidget,name)
+            newSubWidget = MBSubWidget(self.qmbClient,name,parent=self)
+            self.qmbClient.subscribe(name,callback=newSubWidget.addLine)
+            self.tabWidget.addTab(newSubWidget,name)
             
 app = QtGui.QApplication(sys.argv)
-mainwin = MBChatMainWindow()
+mainwin = MBSubMainWindow()
 
 mainwin.show()
 
