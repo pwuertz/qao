@@ -12,7 +12,7 @@ TYPE_SET         = "set"
 TYPE_ACK         = "ack"
 TYPE_NAK         = "nak"
 
-class tcpPkgClient():
+class TcpPkgClient():
     """
     Low level class that handles the sending and receiving of data organised in packets via tcp.
     The content of a packet is not interpreted, this should be done by derived classe.
@@ -57,11 +57,11 @@ class tcpPkgClient():
         if len(data) != pkgLen[0]: raise Exception("Number of Bytes wrong during read")
         return data
 
-class MessageBusClient(tcpPkgClient):
+class MessageBusClient(TcpPkgClient):
 
     def __init__(self):
         self.subscriptionCallbacks = {}
-        tcpPkgClient.__init__(self)
+        TcpPkgClient.__init__(self)
 
     def subscribe(self, topic, callback = None):
         topic = str(topic)
@@ -108,6 +108,17 @@ class MessageBusClient(tcpPkgClient):
             sys.stderr.write(errorstr + "\n")
 
 
+class QMessageBusClient(MessageBusClient):
+    def __init__(self):
+        try:
+            from PyQt4 import QtCore
+        except ImportError:
+            from PySide import QtCore
+        
+        MessageBusClient.__init__(self)
+        self.s_notify = QtCore.QSocketNotifier(self.clientSock.fileno(),QtCore.QSocketNotifier.Read)
+        self.s_notify.activated.connect(self.handleEvent)
+
 if __name__ == "__main__":
     import time
     
@@ -129,3 +140,4 @@ if __name__ == "__main__":
         if readySocks[0] == [client.clientSock]:
             client.handleEvent()
     client.disconnectFromServer()
+
