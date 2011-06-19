@@ -1,24 +1,20 @@
 from qao.io import messageBusPP as messageBus
-import socket,cPickle
+import socket,cPickle,select
 
-try:
-    from PyQt4 import QtCore, QtNetwork
-    from PyQt4.QtCore import pyqtSignal as qtSignal
-except ImportError:
-    from PySide import QtCore, QtNetwork
-    from PySide.QtCore import Signal as qtSignal
 
 class ServerClientConnection(messageBus.TcpPkgClient):
     
-    def __init__(self, server, connSockDesc):
-        self.clientSock = socket.fromfd(connSockDesc,socket.AF_INET, socket.SOCK_STREAM)
+    def __init__(self, server, connSock):
+        self.clientSock = connSock
         self.server = server
         self.subscriptions = set([])
-        self.s_notify = QtCore.QSocketNotifier(connSockDesc,QtCore.QSocketNotifier.Read)
-        self.s_notify.activated.connect(self._recvPacketPickled)
-    
+        
     def forwardEvent(self, topic, data):
         self._sendPacketPickled([messageBus.TYPE_PUBLISH, topic, data])
+    
+    def fileno(self):
+        #needed for select
+        return self.clientSock.fileno()
     
     def _sendPacketPickled(self,data):
         self._sendPacket(cPickle.dumps(data, -1))
@@ -58,28 +54,22 @@ class ServerClientConnection(messageBus.TcpPkgClient):
             # print the error server side
             print "error reading packet:", errorstr
 
-class MessageBusServer(QtCore.QObject):
-    
-    clientConnected = qtSignal(object)
-    clientDisconnected = qtSignal(object)
-    eventPublished = qtSignal(str, object)
+class MessageBusServer():
     
     def __init__(self, port = messageBus.DEFAULT_PORT):
-                
-        QtCore.QObject.__init__(self)
-        # setup server
-        self.server = QtNetwork.QTcpServer()
-        self.server.listen(port=port)
-        self.server.newConnection.connect(self._handleNewConnection)
+        
+        self.serverSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serverSock.bind(('', port))
+        self.serverSock.listen(1)
         # list of client connections
         self.clients = []
             
     def _handleNewConnection(self):
-        client = ServerClientConnection(self,self.server.nextPendingConnection().socketDescriptor())
-        client.disconnected.connect(self._handleDisconnect)
+        conn, addr = self.serverSock.accept()
+        print 'Connected by', addr
+        client = ServerClientConnection(self,conn)
         self.clients.append(client)
-        self.clientConnected.emit(client)
-        assert (not self.server.hasPendingConnections()) # TODO: do we have to check for multiple connections?
+        #assert (not self.server.hasPendingConnections()) # TODO: do we have to check for multiple connections?
     
     def _handlePublish(self, topic, data):
         topic = str(topic)
@@ -87,27 +77,39 @@ class MessageBusServer(QtCore.QObject):
         for client in self.clients:
             if topic in client.subscriptions:
                 client.forwardEvent(topic, data)
-        self.eventPublished.emit(topic, data)
+     
+    def fileno(self):
+        #needed for select
+        return self.serverSock.fileno()
     
     def _handleDisconnect(self):
         client = self.sender()
-        self.clientDisconnected.emit(client)
         self.clients.remove(client)
 
 if __name__ == "__main__":
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    import time
     
-    print "Starting MessageServer at port %d" % messageBus.DEFAULT_PORT
+    def printdummy(topic,data):
+        print "%s: %s (Dauer:%.2f)"%(topic,data[0],time.time()-float(data[1]))
+
+    #initiate client connection
+    server = MessageBusServer()
     
-    class ConsoleServer(MessageBusServer):
-        def __init__(self):
-            MessageBusServer.__init__(self)
-            self.eventPublished.connect(self.printEventPublished)
-            
-        def printEventPublished(self, topic, data):
-            print "new event: %s" % str(topic)
+    print "starting main loop"
     
-    app = QtCore.QCoreApplication([])
-    serv = ConsoleServer()
-    app.exec_()
+    while True:
+        checkConns = []
+        checkConns.append(server)
+        checkConns.extend(server.clients)
+        
+        #print checkConns
+        readyConns = select.select(checkConns,[],[])
+        print readyConns
+        clientConns = [client for client in readyConns[0] if isinstance(client,ServerClientConnection)]
+        serverConns = [client for client in readyConns[0] if isinstance(client,MessageBusServer)]
+        for server in serverConns:
+            print "handle new connection"
+            server._handleNewConnection()
+        for client in clientConns:
+            client._recvPacketPickled()
+    client.disconnectFromServer()
