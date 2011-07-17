@@ -30,6 +30,8 @@ class MBSubWidget(QtGui.QWidget):
         self.lineEdit.clear()
         
     def addLine(self,topic,data):
+        if isinstance(data,dict):
+            data = data.items()
         tableStr = "<table><tr><th rowspan='%i' style='padding-right:25px'><font color='#FF0000'>%s</font></th><td>Arg 1:</td><td style='border-top:1px solid black; margin:0px;'>%s</td></tr>"%(len(data),time.strftime("%d. %m. %H:%M:%S"),data[0])
         i=2
         for datum in data[1:]:
