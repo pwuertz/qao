@@ -1,4 +1,4 @@
-import socket, numpy, sys
+import socket
 
 class Eclex:
     __BUFSIZE__ = 1024
