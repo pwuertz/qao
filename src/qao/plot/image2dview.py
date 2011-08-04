@@ -1,23 +1,7 @@
 import sys
 import numpy
+from qao.plot import PlotTools
 from PyQt4 import QtGui, QtCore
-
-def convertToGrayscaleQImage(data, plotrange=[None, None]):
-    # check range, scale to 255
-    if plotrange[0] == None: plotrange = [data.min(), plotrange[1]]
-    if plotrange[1] == None: plotrange = [plotrange[0], data.max()]
-    data = (data-plotrange[0]) * (255.0 / (plotrange[1]-plotrange[0]))
-    # clip and convert data
-    data = data.clip(0,255).astype(numpy.uint8)
-    # create rgba image buffer
-    data_rgb = numpy.empty([data.shape[0], data.shape[1], 4], numpy.uint8)
-    data_rgb[:,:,0] = data
-    data_rgb[:,:,1] = data
-    data_rgb[:,:,2] = data
-    # create qimage
-    qimage = QtGui.QImage(data_rgb.data,data.shape[1],data.shape[0],QtGui.QImage.Format_RGB32)
-    qimage._numpyReference = data_rgb
-    return qimage
 
 # TODO: Signals and slots should only be used in QObjects.
 # QGraphicsItem is not a QObject and multiple inheritance from Qt classes
@@ -231,11 +215,19 @@ class ImageWidget(QtGui.QGraphicsView):
     def resizeEvent(self, event):
         if self.allowScaling: self.fitInView(self.sceneRect(), mode=1)
            
-    def setImageData(self, data):
+    def setImageData(self, data, colormap = "gray"):
         # store new image data        
         self.imageData = data
         # create a pixmap from qimage
-        qimage = convertToGrayscaleQImage(self.imageData, self.zrange)
+        if colormap == "hot":
+            qimage = PlotTools.convertToQImage(self.imageData, PlotTools.cmap_hot, self.zrange)
+        elif colormap == "wjet":
+            qimage = PlotTools.convertToQImage(self.imageData, PlotTools.cmap_wjet, self.zrange)
+        elif colormap == "jet":
+            qimage = PlotTools.convertToQImage(self.imageData, PlotTools.cmap_jet, self.zrange)
+        else:
+            qimage = PlotTools.convertToGrayscaleQImage(self.imageData, self.zrange)
+        
         pixmap = QtGui.QPixmap.fromImage(qimage).copy()
         # apply new pixmap and rescale the scene 
         self.imageItem.setPixmap(pixmap)
@@ -299,10 +291,10 @@ class Data2DViewer(QtGui.QWidget):
         # defaults
         self.setImageData(numpy.zeros([100, 100], dtype=float))
         
-    def setImageData(self, data):
+    def setImageData(self, data, colormap="gray"):
         # set new image
         data_old = self.imageWidget.imageData
-        self.imageWidget.setImageData(data)
+        self.imageWidget.setImageData(data, colormap=colormap)
         
         # set new linescan position for new image shapes 
         if (numpy.array(data.shape) != data_old.shape).any():
@@ -340,11 +332,11 @@ if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     win = Data2DViewer()
     win.show()
-    win.setImageData(data)
+    win.setImageData(data, colormap="wjet")
     
     win2 = ImageWidget()
     win2.setAllowScaling(True)
-    win2.setImageData(data)
+    win2.setImageData(data, colormap="gray")
     win2.show()
     app.exec_()
 
