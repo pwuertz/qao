@@ -4,7 +4,7 @@ import numpy
 
 img_names = ["absImage", "signalImage", "flatImage", "darkImage"]
 
-def saveAbsorptionImage(filename, absImage, signalImage = None, flatImage = None, darkImage = None, metadata = {}):
+def saveAbsorptionImage(filename, absImage, signalImage = None, flatImage = None, darkImage = None, metadata = {}, dtype = None):
     # check/append file extension
     basename, ext = os.path.splitext(filename)
     if ext.lower() not in [".h5", ".hdf", ".hdf5"]: ext += ".h5"
@@ -13,7 +13,7 @@ def saveAbsorptionImage(filename, absImage, signalImage = None, flatImage = None
     fh = h5py.File(basename+ext, "w")
     for name, data in zip(img_names, [absImage, signalImage, flatImage, darkImage]):
         if data == None: continue
-        ds = fh.create_dataset(name, data=data, compression="gzip")
+        ds = fh.create_dataset(name, data=data, dtype=dtype, compression="gzip")
         ds.attrs["CLASS"] = "IMAGE"
         ds.attrs["IMAGE_VERSION"] = "1.3"
         if name == "absImage":
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     saveAbsorptionImage(fname, absImage=data, metadata=info)
     absImage, otherImages, meta = loadAbsorptionImage(fname)
     print "loaded from file"
-    print absImage.shape
+    print absImage.shape, absImage.dtype
     print otherImages
     print meta
     
