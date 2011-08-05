@@ -26,11 +26,13 @@ def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
 class MessageBusClient(QtCore.QObject):
     
     receivedEvent = qtSignal(str, object)
+    connected = qtSignal()
     disconnected = qtSignal()
     
     def __init__(self):
         QtCore.QObject.__init__(self)
         self.connection = QtNetwork.QTcpSocket()
+        self.connection.connected.connect(self.connected)
         self.connection.disconnected.connect(self.disconnected)
         self.connection.readyRead.connect(self._handleReadyRead)
         self.packetSize = 0
@@ -44,6 +46,9 @@ class MessageBusClient(QtCore.QObject):
     
     def disconnectFromServer(self):
         self.connection.disconnectFromHost()
+    
+    def isConnected(self):
+        return self.connection.state() == self.connection.ConnectedState
         
     def subscribe(self, topic, callback = None):
         topic = str(topic)
