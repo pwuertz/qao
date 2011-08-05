@@ -47,11 +47,13 @@ if __name__ == '__main__':
     
     info = {"dwell": 3.0}
     data = numpy.random.rand(512, 512)
-    saveAbsorptionImage(fname, absImage=data, metadata=info)
+    saveAbsorptionImage(fname, absImage=data, signalImage=data, metadata=info)
+    print "saved", os.stat(fname).st_size, "bytes"
+    print "-"*30
     absImage, otherImages, meta = loadAbsorptionImage(fname)
     print "loaded from file"
-    print absImage.shape, absImage.dtype
-    print otherImages
-    print meta
+    print "absImage:   ", absImage.shape, absImage.dtype
+    print "otherImages:", otherImages.keys()
+    print "metadata:   ", meta
     
     os.remove(fname)
