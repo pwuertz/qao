@@ -39,6 +39,7 @@ def loadAbsorptionImage(filename):
         if name not in fh: continue
         images[name] = numpy.asarray(fh[name])
     
+    fh.close()
     return images.pop("absImage"), images, metadata
 
 if __name__ == '__main__':
