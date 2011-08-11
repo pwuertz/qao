@@ -416,6 +416,8 @@ class Agilent33500:
         # TODO: check free space
         # map [-1:1] to [-8191:8191]
         data = numpy.asfarray(data)
+        # ensure data has at least 8 items
+        if data.size < 8: data = data.repeat([1]*(data.size-1) + [1+8-data.size])
         data = numpy.clip(data, -1.0, 1.0)
         # convert data to 16bit signed int array
         data = numpy.round(data * 32767).astype(numpy.int16)
