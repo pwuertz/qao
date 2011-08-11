@@ -330,6 +330,16 @@ class Agilent33500:
         self.send('sour%d:burs:ncyc %d' % (channel, ncycles))
         self.send('trig%d:sour ext' % channel)
         self.send('sour%d:burs:stat on' % channel)
+
+    def setTrigExt(self, ext_trig = True, channel=1):
+        """
+        Wait for an external trigger and run the configured
+        waveform for ncycles (burst mode).
+        """
+        if ext_trig:
+            self.send('trig%d:sour ext' % channel)
+        else:
+            self.send('trig%d:sour imm' % channel)
         
     def setOutputLoad(self, load = 50, channel=1):
         """
@@ -468,9 +478,9 @@ class Agilent33500:
         cmd = "sour%d:data:seq #%d%d%s" % (channel, len(str(len(seqstr))), len(seqstr), seqstr)
         self.send(cmd)
         
-    def applyArb(self, name, samplerate, channel=1):
+    def applyArb(self, name, samplerate, voltAmp, voltOff, unit="V", channel=1):
         self.send("sour%d:func:arb %s" % (channel, name))
-        self.send("sour%d:func:arb:srat %e" % (channel, samplerate))
+        self.send("sour%d:apply:arb %f Hz, %f %s, %f %s" % (channel, samplerate, voltAmp, unit, voltOff, unit))
     
     def saveState(self, num):
         self.send("*sav %d" % num)
