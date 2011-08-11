@@ -434,7 +434,7 @@ class Agilent33500:
         # upload data
         self.send("sour%d:data:arb:dac %s, %s%s" % (channel, name, header, datastr))
         
-    def addArbAbsolute(self, data, name, channel=1, unit = "V"):
+    def addArbAbsolute(self, data, name, unit = "V", channel=1):
         data = numpy.asfarray(data)
         
         # normalize data
@@ -445,8 +445,8 @@ class Agilent33500:
         data_norm = (data-off)/(0.5*amp)
         
         # add arb, set voltages
-        self.voltAmplitude(amp, unit)
-        self.voltOffset(off, unit)
+        self.voltAmplitude(amp, unit, channel)
+        self.voltOffset(off, unit, channel)
         self.addArbNormalized(data_norm, name=name, channel=channel)
     
     def addTriggeredSeq(self, name, arb_names, channel):
