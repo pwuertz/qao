@@ -36,3 +36,6 @@ class Eclex:
         beamIM = self.query("beamIM")
         return (100./2047 * int(beamIM))
     
+    def getZoomValue(self):
+        return float(self.query("zoom_sliderUM"))
+    
