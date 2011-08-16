@@ -1,5 +1,6 @@
 import time
 import ctypes
+import numpy
 from ctypes import byref
 
 __mcbDriver = None
@@ -47,7 +48,18 @@ class McbDriver:
     def getDetLength(self, hDet):
         # return the number of channels for a device
         return self._driver.MIOGetDetLength(hDet)
+
+    def getData(self, hDet, startChan, numChans):
+        data  = numpy.zeros(numChans, dtype = numpy.int32)
+        pdata = data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)) 
+        nRet = ctypes.c_int16()
+        dataMask = ctypes.c_int32()
+        roiMask  = ctypes.c_int32()
+        assert self._driver.MIOGetData(hDet, startChan, numChans, pdata, byref(nRet),
+                                       byref(dataMask), byref(roiMask), "") > 0, "getData failed"
+        return data
     
+    """ # old ctypes buffer method
     def getData(self, hDet, startChan, numChans):
         data = (ctypes.c_int32*numChans)()
         nRet = ctypes.c_int16()
@@ -57,6 +69,7 @@ class McbDriver:
                                        byref(data), byref(nRet),
                                        byref(dataMask), byref(roiMask), "") > 0, "getData failed"
         return data
+    """
 
     def isActive(self, hDet):
         """
