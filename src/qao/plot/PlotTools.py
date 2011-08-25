@@ -91,8 +91,8 @@ def convertToQImage(data, cmap=cmap_wjet, plotrange=[None, None]):
     if plotrange[0] == None: plotrange = [data.min(), plotrange[1]]
     if plotrange[1] == None: plotrange = [plotrange[0], data.max()]
     # float and normalize data
-    data = data.astype(numpy.float)
-    data = (data-plotrange[0]) / (plotrange[1]-plotrange[0])
+    data = numpy.asfarray(data)
+    data = (data-plotrange[0]) * (1. / (plotrange[1]-plotrange[0]))
     data = data.clip(0,1)
     # create red, green and blue channel images
     data_r = numpy.zeros(data.shape, dtype=numpy.uint32)
