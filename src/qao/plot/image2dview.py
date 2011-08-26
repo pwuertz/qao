@@ -1,6 +1,6 @@
 import sys
 import numpy
-from qao.plot import PlotTools
+from qao.plot import image
 from PyQt4 import QtGui, QtCore
 
 # TODO: Signals and slots should only be used in QObjects.
@@ -220,13 +220,13 @@ class ImageWidget(QtGui.QGraphicsView):
         self.imageData = data
         # create a pixmap from qimage
         if colormap == "hot":
-            qimage = PlotTools.convertToQImage(self.imageData, PlotTools.cmap_hot, self.zrange)
+            qimage = image.createQImage(self.imageData, vmin=self.zrange[0], vmax=self.zrange[1], cmap=image.cmap_hot)
         elif colormap == "wjet":
-            qimage = PlotTools.convertToQImage(self.imageData, PlotTools.cmap_wjet, self.zrange)
+            qimage = image.createQImage(self.imageData, vmin=self.zrange[0], vmax=self.zrange[1], cmap=image.cmap_wjet)
         elif colormap == "jet":
-            qimage = PlotTools.convertToQImage(self.imageData, PlotTools.cmap_jet, self.zrange)
+            qimage = image.createQImage(self.imageData, vmin=self.zrange[0], vmax=self.zrange[1], cmap=image.cmap_jet)
         else:
-            qimage = PlotTools.convertToGrayscaleQImage(self.imageData, self.zrange)
+            qimage = image.createQImage(self.imageData, vmin=self.zrange[0], vmax=self.zrange[1], cmap=image.cmap_gray)
         
         pixmap = QtGui.QPixmap.fromImage(qimage).copy()
         # apply new pixmap and rescale the scene 
