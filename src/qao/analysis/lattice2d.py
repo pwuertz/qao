@@ -11,7 +11,6 @@
 #
 
 import qao.utils as utils
-from plainwave import plainwaveCorrelation
 
 import numpy as np
 from scipy import optimize
@@ -92,82 +91,6 @@ def findPhasesFromDataList(data_list, k_vec):
     fk = np.array([(k_wave*data).sum() / data.sum() for data in data_list])
     # return the complex phase and relative amplitude
     return np.angle(fk), np.abs(fk)
-
-def findWaveVectors(autocorr2d_data, length_guess):
-    """
-    Assume that autocorr2d_data is the autocorrelation of an
-    image that contains a lattice formed by two plain waves.
-    Find the wave vectors of the plain waves.
-    
-    returns: k1, k2
-    """   
-    # create search grid for phi and length
-    data = autocorr2d_data
-    
-    # rough check for all angles
-    dphi = 0.5
-    phi_list = np.arange(-90., 90., dphi)
-    phi_f = lambda ip: phi_list[0] + ip*dphi
-    # rough check length +- 10%, 20 samples total 
-    length_interval = length_guess*0.2
-    dlength = float(length_interval) / 20
-    length_list = np.arange(length_guess-length_interval/2,
-                            length_guess+length_interval/2,
-                            dlength)
-    length_f = lambda il: length_list[0] + il*dlength
-    
-    #####################################################################
-    
-    # calculate map
-    corrs_map = np.zeros([len(phi_list), len(length_list)], dtype=float)
-    for ip, phi in enumerate(phi_list):
-        for il, length in enumerate(length_list):
-            corrs_map[ip, il] = plainwaveCorrelation(data, phi, length)
-    
-    #####################################################################
-            
-    # find first maximum
-    length_max = length_f(corrs_map.argmax() % corrs_map.shape[1])
-    phi_max = phi_f(corrs_map.argmax() / corrs_map.shape[1])
-    # refine first maximum
-    func = lambda pars: -plainwaveCorrelation(data, pars[0], pars[1])
-    phi1_max, length1_max = optimize.fmin(func, [phi_max, length_max], disp=0)
-    
-    #####################################################################
-    
-    # find second maximum
-    # search at +90deg, +-45deg
-    
-    # enlarge map
-    corrs_map = np.concatenate([corrs_map,corrs_map], axis=0)
-    # clip map to new search interval
-    search_ip = int((phi1_max+90-phi_list[0])/dphi)
-    search_ip1 = search_ip - int(45./dphi)
-    search_ip2 = search_ip + int(45./dphi)
-    corrs_map2 = corrs_map[search_ip1:search_ip2, :]
-    
-    # find second maximum
-    length_max = length_f(corrs_map2.argmax() % corrs_map2.shape[1])
-    phi_max = phi_f(search_ip1 + corrs_map2.argmax() / corrs_map2.shape[1])
-    # refine second maximum
-    func = lambda pars: -plainwaveCorrelation(data, pars[0], pars[1])
-    phi2_max, length2_max = optimize.fmin(func, [phi_max, length_max], disp=0)
-    
-    #####################################################################
-    
-    # calculate wave vectors
-    k1 = (2*np.pi/length1_max) * np.array([np.cos(phi1_max*np.pi/180), np.sin(phi1_max*np.pi/180)])
-    k2 = (2*np.pi/length2_max) * np.array([np.cos(phi2_max*np.pi/180), np.sin(phi2_max*np.pi/180)])
-    
-    # ensure our conventions
-    # k1 is the wave in horizontal direction
-    if abs(k1[0]/k1[1]) < abs(k2[0]/k2[1]): k1, k2 = k2, k1
-    # k1 shall point to positive x
-    if k1[0] < 0: k1 *= -1
-    # k2 shall point to positive y
-    if k2[1] < 0: k2 *= -1
-        
-    return [k1, k2]
 
 def reciprocalLattice2D(a1, a2):
     """
@@ -251,35 +174,6 @@ def findWaveVectorsFromQmiList_new(qmi_list, spacing_guess_nm=600, limit=None, c
     data_list = [image.image_data for image in qmi_list[:limit]]
     if callback: callback("determining wave vectors", 0, 1)
     result = findWaveVectorsFromDataList(data_list, length_guess_px)
-    if callback: callback("determining wave vectors", 1, 1)
-    return result
-
-def findWaveVectorsFromQmiList(qmi_list, spacing_guess_nm=600, limit=None, callback=None):
-    """
-    Run findWaveVectors on the sum of all autocorrelated images in qmi_list.
-    Returns the two wave vectors from findWaveVectors.
-    
-    spacing_guess_nm: Approximate wavelength of the plainwaves in nm.
-    limit: Stop accumulating autocorrelations after the first <limit> images.
-    callback: Report the current status by calling callback(message, i, n).
-    
-    returns: k1, k2
-    """
-    
-    # estimated wavelength nm->px
-    nm_per_px = float(qmi_list[0].image_parameters["PixelDistanceX"])    
-    length_guess = float(spacing_guess_nm) / nm_per_px
-    
-    # sum of all (limit) single image autocorrelations
-    autocorr2d_data = np.zeros(qmi_list[0].image_data.shape, dtype=float)    
-    assert(len(qmi_list[:limit]) != 0)
-    for i,image in enumerate(qmi_list[:limit]):
-        if callback: callback("calculating autocorrelation", i, len(qmi_list[:limit]))
-        autocorr2d_data += autocorr2d(image.image_data)
-    
-    # return the result from findWaveVectors
-    if callback: callback("determining wave vectors", 0, 1)
-    result = findWaveVectors(autocorr2d_data, length_guess)
     if callback: callback("determining wave vectors", 1, 1)
     return result
 

@@ -1,7 +1,7 @@
 import os, bz2
 import numpy as np
 from PyQt4 import QtCore, QtGui
-import rotator
+from scipy import ndimage
 
 def drawPolygonMask(width, height, points):
     """
@@ -182,7 +182,7 @@ def nploadbz(fname):
     return d
     
 def rotate(data, degrees):
-    return rotator.rotate(data, degrees)
+    return ndimage.rotate(data, degrees)
 
 if __name__ == "__main__":
   import doctest
