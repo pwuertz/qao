@@ -54,6 +54,17 @@ def angle_mean_deg(angle_list_deg):
     phi_rad, rel_length = angle_mean(angle_list_rad)
     return [phi_rad * 180. / np.pi, rel_length]
 
+def angle_mean_std(angles_rag):
+    """
+    Calculate the mean angle and the standard deviation from a
+    list of angles in radians.
+    Returns [mean, std]
+    """
+    angles_rag = np.asfarray(angles_rag)
+    mean_angles = np.angle(np.exp(1j*angles_rag).sum())
+    std_angles  = np.std((((angles_rag - mean_angles) + np.pi) % (2*np.pi)) - np.pi)
+    return mean_angles, std_angles
+
 def findMostFrequent(data):
     """
     finds the most frequent element in a list
