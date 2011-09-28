@@ -208,6 +208,7 @@ class MessageBusServer(QtCore.QObject):
         client.disconnected.connect(self._handleDisconnect)
         self.clients.append(client)
         self.clientConnected.emit(client)
+        print "new client connected (active connections: %d)" % len(self.clients)
         assert (not self.server.hasPendingConnections()) # TODO: do we have to check for multiple connections?
     
     def _handlePublish(self, topic, data):
@@ -222,6 +223,7 @@ class MessageBusServer(QtCore.QObject):
         client = self.sender()
         self.clientDisconnected.emit(client)
         self.clients.remove(client)
+        print "client disconnected (active connections: %d)" % len(self.clients)
 
 if __name__ == "__main__":
     import signal
