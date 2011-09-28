@@ -1,3 +1,6 @@
+# memory debug
+from guppy import hpy; hp=hpy()
+
 import sys, cPickle
 try:
     from PyQt4 import QtCore, QtNetwork
@@ -5,7 +8,6 @@ try:
 except ImportError:
     from PySide import QtCore, QtNetwork
     from PySide.QtCore import Signal as qtSignal
-    
 
 DEFAULT_PORT = 9090
 DEFAULT_TIMEOUT = 5000
@@ -124,7 +126,12 @@ class ServerClientConnection(QtCore.QObject):
         self.subscriptions = set([])
     
     def forwardEvent(self, topic, data):
-        self._sendPacket([TYPE_PUBLISH, topic, data])
+        try:
+            self._sendPacket([TYPE_PUBLISH, topic, data])
+        except MemoryError:
+            print "Out of memory"
+            print hp.heap()
+            exit()
         
     def _sendPacket(self, data):
         stream = QtCore.QDataStream(self.connection)
@@ -232,4 +239,5 @@ if __name__ == "__main__":
     
     app = QtCore.QCoreApplication([])
     serv = ConsoleServer()
+    
     app.exec_()
