@@ -1,4 +1,5 @@
 # memory debug
+import guppy.heapy.RM
 from guppy import hpy; hp=hpy()
 
 import sys, cPickle
