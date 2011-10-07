@@ -17,7 +17,7 @@ class DataTable(QtCore.QObject):
     rowRemoved   = QtCore.pyqtSignal(int)
     colRemoved   = QtCore.pyqtSignal(int)
     dataChanged  = QtCore.pyqtSignal(int, int, int, int)
-    flagsChanged = QtCore.pyqtSignal(int)
+    flagChanged = QtCore.pyqtSignal(int, str, bool)
     
     def __init__(self, id_key=None):
         if not id_key: id_key = ID_KEY_DEFAULT
@@ -204,7 +204,7 @@ class DataTable(QtCore.QObject):
             flags.add(flag)
         else:
             flags.discard(flag)
-        if nflags != len(flags): self.flagsChanged.emit(col)
+        if nflags != len(flags): self.flagChanged.emit(col, flag, enabled)
     
     def setFlagUnique(self, col, flag, enabled = True):
         """
@@ -323,7 +323,7 @@ class DataTableModel(QtCore.QAbstractTableModel):
         dataTable.rowRemoved.connect(self.handleRowRemoved)
         dataTable.colRemoved.connect(self.handleColRemoved)
         dataTable.dataChanged.connect(self.handleDataChanged)
-        dataTable.flagsChanged.connect(self.handleFlagsChanged)
+        dataTable.flagChanged.connect(self.handleFlagChanged)
     
     def handleCleared(self):
         self.reset()
@@ -343,7 +343,7 @@ class DataTableModel(QtCore.QAbstractTableModel):
     def handleDataChanged(self, rowFrom, rowTo, colFrom, colTo):
         self.dataChanged.emit(self.index(rowFrom, colFrom), self.index(rowTo, colTo))
             
-    def handleFlagsChanged(self, col):
+    def handleFlagChanged(self, col):
         self.headerDataChanged.emit(QtCore.Qt.Horizontal, col, col)
  
     def rowCount(self, parent = QtCore.QModelIndex()): 
@@ -388,7 +388,9 @@ class DataTableModel(QtCore.QAbstractTableModel):
         if not index.isValid():
             return QtCore.QVariant()
         elif (role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole) and not isBool:
-            return self.dataTable[row, col]
+            val = self.dataTable[row, col]
+            if val != None: return str(val)
+            else: return None
         elif role == QtCore.Qt.BackgroundRole:
             return QtCore.QVariant() #return QtGui.QColor("gray")
         elif role == QtCore.Qt.DecorationRole:
@@ -430,8 +432,8 @@ class DataTableView(QtGui.QTableView):
         header.setMovable(True)
         
         # add plot window
-        self.setDataTable(dataTable)
         self.plotWidget = DataTablePlot(dataTable)
+        self.setDataTable(dataTable)
     
     def saveTemplate(self, fname):
         """
@@ -478,6 +480,7 @@ class DataTableView(QtGui.QTableView):
     
     def setDataTable(self, dataTable):
         self.setModel(DataTableModel(dataTable))
+        self.plotWidget.setDataTable(dataTable)
         
     def setModel(self, model):
         assert isinstance(model, DataTableModel)
@@ -576,6 +579,16 @@ class DataTablePlot(MatplotlibWidget):
     def __init__(self, dataTable):
         MatplotlibWidget.__init__(self)
         self.setWindowFlags(QtCore.Qt.Tool)
+        self.setDataTable(dataTable)
+    
+    def setDataTable(self, dataTable):
+        # disconnect from previous table
+        try:
+            self.dataTable.dataChanged.disconnect(self.updatePlotData)
+            self.dataTable.rowInserted.disconnect(self.updatePlotData)
+        except:
+            pass
+        # connect to new table
         self.dataTable = dataTable
         dataTable.dataChanged.connect(self.updatePlotData)
         dataTable.rowInserted.connect(self.updatePlotData)
