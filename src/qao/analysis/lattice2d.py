@@ -82,9 +82,8 @@ def findPhasesFromDataList(data_list, k_vec):
     """
     
     # create a centered plain wave defined by k_vec 
-    h, w = data_list[0].shape
-    X = np.arange(w, dtype=float).reshape([1,w]) - .5*(w-1)
-    Y = np.arange(h, dtype=float).reshape([h,1]) - .5*(h-1)
+    ny, nx = data_list[0].shape
+    Y, X = np.ogrid[-(ny-1)*.5:(ny-1)*.5:1j*ny, -(nx-1)*.5:(nx-1)*.5:1j*nx]
     k_wave = np.exp(1j*(X*k_vec[0]+Y*k_vec[1]))
     
     # calculate the fourier component for k_vec, normalize to data.sum
