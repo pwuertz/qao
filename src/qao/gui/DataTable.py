@@ -2,10 +2,8 @@ import time
 import os
 import csv
 import numpy as np
-from StringIO import StringIO
 from PyQt4 import QtGui, QtCore
 
-import matplotlib
 from MatplotlibWidget import MatplotlibWidget
 
 ID_KEY_DEFAULT = "id"
@@ -121,7 +119,7 @@ class DataTable(QtCore.QObject):
         self._modified = True
         self.rowRemoved.emit(row)
     
-    def setGrouping(self, col, enabled = True):
+    def setGroupBy(self, col, enabled = True):
         """
         use a column to group returned values by elements of this column
         """
@@ -586,31 +584,35 @@ class DataTablePlot(MatplotlibWidget):
         try:
             self.dataTable.dataChanged.disconnect(self.updatePlotData)
             self.dataTable.rowInserted.disconnect(self.updatePlotData)
+            self.dataTable.rowRemoved.disconnect(self.updatePlotData)
+            self.dataTable.flagChanged.disconnect(self.handleFlagChange)
         except:
             pass
         # connect to new table
         self.dataTable = dataTable
         dataTable.dataChanged.connect(self.updatePlotData)
         dataTable.rowInserted.connect(self.updatePlotData)
+        dataTable.rowRemoved.connect(self.updatePlotData)
+        dataTable.flagChanged.connect(self.handleFlagChange)
     
     def showEvent(self, event):
-        self.updatePlotData()
+        self.setupPlotData()
+    
+    def handleFlagChange(self, col, flag):
+        if flag in ["plotX", "plotY", "group"]: self.setupPlotData()
     
     def setColumnAsX(self, col, enable = True):
         self.dataTable.setFlagUnique(col, "plotX", enable)
-        self.updatePlotData()
     
     def setColumnAsY(self, col, enable = True):
         self.dataTable.setFlag(col, "plotY", enable)
-        self.updatePlotData()
 
     def setColumnAsG(self, col, enable = True):
-        self.dataTable.setGrouping(col, enable)
-        self.updatePlotData()
-
-    def updatePlotData(self):
+        self.dataTable.setGroupBy(col, enable)
+    
+    def setupPlotData(self):
         if self.isHidden(): return
-        # get x and y data from selected columns
+        # get selected x and y column numbers
         try:
             colX = self.dataTable.searchFlag("plotX")[0]
             colsY = self.dataTable.searchFlag("plotY")
@@ -623,7 +625,7 @@ class DataTablePlot(MatplotlibWidget):
         except:
             groupName = ""
         
-        # give data to matplotlibwidget
+        # give data to MatplotlibWidget
         self.clearPlots()
         for colY in colsY:
             self.newPlotGroup()
@@ -638,6 +640,24 @@ class DataTablePlot(MatplotlibWidget):
         self.setXLabel(self.dataTable.colInfo[colX]["name"])
         
         # data is set, draw plot figure
+        self.draw()
+        
+    def updatePlotData(self):
+        if self.isHidden(): return
+        # get selected x and y column numbers
+        try:
+            colX = self.dataTable.searchFlag("plotX")[0]
+            colsY = self.dataTable.searchFlag("plotY")
+        except:
+            return
+        
+        # update data
+        for i, colY in enumerate(colsY):
+            groupedData = self.dataTable.getColumnValuesGrouped(colX, colY)
+            for j, groupItem in enumerate(groupedData):
+                self.updateGroupedPlot(i, j, groupItem[1], groupItem[2])
+        
+        # data updated, draw plot figure
         self.draw()
 
 class DataTableTabs(QtGui.QTabWidget):
@@ -673,7 +693,7 @@ class DataTableTabs(QtGui.QTabWidget):
 
         tableView.setParent(None)
 
-if __name__ == "__main__":   
+if __name__ == "__main__":
     QtGui.QApplication.setGraphicsSystem("raster")
     app = QtGui.QApplication([])
     
@@ -688,9 +708,9 @@ if __name__ == "__main__":
         dataTable.insertData(data_dict)
     dataTable.setFlag(0, "plotX")
     dataTable.setFlag(3, "plotY")
-    dataTable.setGrouping(4)
-    dataTable.save("dump.py")
-    dataTable.save("dump.csv")
+    dataTable.setGroupBy(4)
+    #dataTable.save("dump.py")
+    #dataTable.save("dump.csv")
 
     tabs = DataTableTabs()
     tabs.addTable("test 1", DataTableView(dataTable))

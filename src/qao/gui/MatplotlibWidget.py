@@ -12,7 +12,7 @@ class MatplotlibWidget(QtGui.QWidget):
     markers = 'os^vd'
     linestyles = ['-', '--', '-.', ':']
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, autoscaleBn = False):
         QtGui.QWidget.__init__(self, parent)
         
         # canvas
@@ -28,20 +28,28 @@ class MatplotlibWidget(QtGui.QWidget):
         self.navigation = NavigationToolbar(self.canvas, self, coordinates=False)
         self.actionGroupPlotStyle = self.navigation.addAction("Split", self.toggleGroupPlotStyle)
         self.actionGroupPlotStyle.setCheckable(True)
+        self.actionAutoscale = self.navigation.addAction("Auto", self.toggleAutoscale)
+        self.actionAutoscale.setCheckable(True)
+        self.actionAutoscale.setChecked(True)
         layout = QtGui.QVBoxLayout(self)
         layout.addWidget(self.canvas)
         layout.addWidget(self.navigation)
         
         # init other stuff
+        self._needSetupFigure = True
+        self._needSetupLines  = True
+        self._needRescale     = True
         self.clearPlots()
         self.setGropPlotStyle("combined")
     
     def clearPlots(self):
         self.plotGroups = []
+        self._needSetupFigure = True
         
     def newPlotGroup(self):
         assert len(self.plotGroups) < len(self.colors)
         self.plotGroups.append([])
+        self._needSetupFigure = True
 
     def addGroupedPlot(self, label, x, y):
         if not self.plotGroups: self.newPlotGroup()
@@ -51,7 +59,13 @@ class MatplotlibWidget(QtGui.QWidget):
                                        color = self.colors[len(self.plotGroups)-1],
                                        ls = self.linestyles[len(lineGroup)])
         lineGroup.append(line)
-        
+        self._needSetupLines = True
+    
+    def updateGroupedPlot(self, group, item, x, y):
+        line = self.plotGroups[group][item]
+        line.set_xdata(x)
+        line.set_ydata(y)
+        self._needRescale = True
     
     def setGropPlotStyle(self, style = "combined"):
         """
@@ -65,6 +79,9 @@ class MatplotlibWidget(QtGui.QWidget):
             self.groupPlotStyle = "individual"
         else:
             raise Exception("invalid group plot style")
+
+        # update figure layout
+        self._needSetupFigure = True
     
     def toggleGroupPlotStyle(self):
         if self.groupPlotStyle == "combined":
@@ -73,37 +90,52 @@ class MatplotlibWidget(QtGui.QWidget):
             self.setGropPlotStyle("combined")
         self.draw()
     
+    def toggleAutoscale(self):
+        self.draw() 
+    
     def setXLabel(self, label):
         self.xlabel = label
     
     def draw(self):
-        nPlotGroups = len(self.plotGroups)
-        if not nPlotGroups: return
-        if self.groupPlotStyle == "individual":
-            self._setupFigure(nPlotGroups)
-            axes = self.axes
-        else:
-            self._setupFigure(1)
-            axes = [self.axes[0]]*nPlotGroups
-        
-        # every group of lines is plottet to one axes
-        for ax, lineGroup in zip(axes, self.plotGroups):
-            for line in lineGroup:
+        if self._needSetupFigure: self._setupFigure()
+        if self._needSetupLines: self._setupLines()
+        if self._needRescale: self._setupScale()
+        self.canvas.draw()
+
+    def _setupFigure(self):
+        self._needSetupFigure = False
+        # clear figure and setup axes for plot groups
+        self.fig.clf()
+        nGroups = len(self.plotGroups)
+        if not nGroups: return
+        if self.groupPlotStyle == "combined":
+            self.axes = [self.fig.add_subplot(1,1,1)] * nGroups
+        elif self.groupPlotStyle == "individual":
+            self.axes  = [self.fig.add_subplot(nGroups,1,1)]
+            self.axes += [self.fig.add_subplot(nGroups,1,i, sharex=self.axes[0]) for i in range(2, nGroups+1)]
+        self.axes[-1].set_xlabel(self.xlabel)
+        # axes prepared, add lines to axes
+        self._setupLines()
+    
+    def _setupLines(self):
+        self._needSetupLines = False
+        self._needRescale = False
+        # clear lines from axes
+        for ax in self.axes: ax.lines = []
+        # every group of lines is plotted to one axes
+        for ax, lines in zip(self.axes, self.plotGroups):
+            for line in lines:
                 ax.add_line(line)
                 line.set_transform(ax.transData)
             ax.autoscale_view()
             ax.legend(loc=0)
-        
-        axes[-1].set_xlabel(self.xlabel)
-        self.canvas.draw()
-
-    def _setupFigure(self, nAxes = 1):
-        if "axes" not in self.__dict__: self.axes = []
-        if len(self.axes) != nAxes:
-            self.fig.clf()
-            self.axes = [self.fig.add_subplot(nAxes,1,i) for i in range(1, nAxes+1)]
-        else:
-            for ax in self.axes: ax.lines = []
+    
+    def _setupScale(self):
+        self._needRescale = False
+        if not self.actionAutoscale.isChecked(): return
+        for ax in self.axes:
+            ax.relim()
+            ax.autoscale()
 
 if __name__ == "__main__":
     app = QtGui.QApplication([])
@@ -116,7 +148,7 @@ if __name__ == "__main__":
     win.show()
 
     x = np.arange(10); y = x**2
-    win.setGropPlotStyle("individual")
+    win.setGropPlotStyle("combined")
     win.newPlotGroup()
     win.addGroupedPlot("one, 1st", x, y)
     win.addGroupedPlot("one, 2nd", x, y-2)
