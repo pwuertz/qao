@@ -243,21 +243,21 @@ class DataTable(QtCore.QObject):
         # add new columns
         self.addColumns(data_dict.keys())
         
-        # get id from data_dict and determine where to insert the data
+        # get idval from data_dict and determine where to insert the data
         if self.id_key in data_dict:
-            id = data_dict[self.id_key]
+            idval = data_dict[self.id_key]
         else:
             print "insertData failed, '%s' not found" % self.id_key
             return
-        itemindex = (self.data[:, 0] == id).nonzero()[0]
+        itemindex = (self.data[:, 0] == idval).nonzero()[0]
         if len(itemindex):
-            # id found in table
+            # idval found in table
             row = itemindex[0]
         else:
-            # id not found, insert row
-            row = np.searchsorted(self.data[:,0], id)
+            # idval not found, insert row
+            row = np.searchsorted(self.data[:,0], idval)
             self.data = np.insert(self.data, row, None, axis=0)
-            self.data[row, 0] = id
+            self.data[row, 0] = idval
         
         # finally insert data to row
         colNames = self.colInfo["name"].tolist()

@@ -1,5 +1,5 @@
-import sys, os, numpy as np
-from PyQt4 import QtCore, QtGui
+import numpy as np
+from PyQt4 import QtGui
 
 # mpl stuff
 import matplotlib
