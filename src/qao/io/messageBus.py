@@ -1,6 +1,10 @@
 # memory debug
-import guppy.heapy.RM
-from guppy import hpy; hp=hpy()
+try:
+    import guppy.heapy.RM
+    from guppy import hpy; hp=hpy()
+    print "enabled heapy memory debug"
+except:
+    pass
 
 import sys, cPickle
 try:
