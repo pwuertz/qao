@@ -548,7 +548,30 @@ class DataTableView(QtGui.QTableView):
         elif action == actionHide:
             self.hideColumn(col)
         elif action == actionShow:
-            for i in range(self.dataTable.colInfo.size): self.showColumn(i)
+            self.showColumnDialog()
+    
+    def showColumnDialog(self):
+        # build list for columns and visibility
+        colNames   = self.dataTable.colInfo["name"].tolist()
+        listWidget = QtGui.QListWidget()
+        listItems  = []
+        for i, name in enumerate(colNames):
+            item = QtGui.QListWidgetItem(name)
+            item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            if not self.isColumnHidden(i): item.setCheckState(QtCore.Qt.Checked)
+            listWidget.addItem(item)
+            listItems.append(item)
+        # on change, show/hide column
+        def handleSelection(item):
+            self.setColumnHidden(listItems.index(item), item.checkState() == QtCore.Qt.Unchecked) 
+        listWidget.itemChanged.connect(handleSelection)
+        
+        # build/exec dialog
+        dialog = QtGui.QDialog()
+        dialog.setWindowTitle("Visible Columns")
+        layout = QtGui.QVBoxLayout(dialog)
+        layout.addWidget(listWidget)
+        dialog.exec_()
     
     def contextMenuEvent(self, event):
         rows = [index.row() for index in self.selectionModel().selectedRows()]
@@ -688,6 +711,8 @@ class DataTableTabs(QtGui.QTabWidget):
                 filename, filter = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", dir, filefilter)
                 filename = str(filename); filter = str(filter)
                 tableView.dataTable.save(filename)
+            elif bn == QtGui.QMessageBox.Cancel:
+                return
             elif bn == QtGui.QMessageBox.Discard:
                 pass
 
