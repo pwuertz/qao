@@ -48,10 +48,10 @@ class DataTable(QtCore.QObject):
         
         data_list = self.data.tolist()
         if ext == ".py":
-            fh.writelines(["#", ",".join(self.colInfo["name"]), "\n"])
+            fh.writelines([repr(self.colInfo["name"].tolist()), "\n"])
             fh.write(repr(data_list))
         elif ext == ".csv":
-            fh.writelines(["#", ",".join(self.colInfo["name"]), "\n"])
+            fh.writelines([",".join(self.colInfo["name"]), "\n"])
             csvfile = csv.writer(fh)
             csvfile.writerows(data_list)
         else:
@@ -690,9 +690,14 @@ class DataTableTabs(QtGui.QTabWidget):
         self.tabBar().setMovable(True)
         self.default_id_key = default_id_key
         
+        self.tabBar().setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.tabBar().customContextMenuRequested.connect(self.handleContextMenuReq)
         self.tabCloseRequested.connect(self.handleTabClose)
+        
+    def setDefaultIdKey(self, default_id_key):
+        self.default_id_key = default_id_key
     
-    def addTable(self, name, tableView = None):
+    def newTable(self, name, tableView = None):
         """
         add a new table to the tab widget
         """
@@ -701,22 +706,53 @@ class DataTableTabs(QtGui.QTabWidget):
             tableView = DataTableView(dataTable)
         self.addTab(tableView, name)
     
+    def newFromTemplate(self, name, filename):
+        pass
+    
+    def saveTable(self, tableView):
+        dir = ""; filefilter = "CSV File (*.csv);;Python File (*.py)"
+        filename, filter = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", dir, filefilter)
+        filename = str(filename); filter = str(filter)
+        if filename: tableView.dataTable.save(filename)
+    
+    def saveTemplate(self, tableView):
+        dir = ""; filefilter = "Table Layout (*.dtl)"
+        filename, filter = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table Layout", dir, filefilter)
+        filename = str(filename); filter = str(filter)
+        if filename: tableView.saveTemplate(filename)
+    
     def handleTabClose(self, tab):
         tableView = self.widget(tab)
         if tableView.dataTable._modified:
             buttons = QtGui.QMessageBox.Save | QtGui.QMessageBox.Discard | QtGui.QMessageBox.Cancel
             bn = QtGui.QMessageBox.question(self, "Unsaved Data", "Table contains unsaved data. Do you want to save before closing the table?", buttons=buttons, defaultButton=QtGui.QMessageBox.Save)
             if bn == QtGui.QMessageBox.Save:
-                dir = ""; filefilter = "CSV File (*.csv);;Python File (*.py)"
-                filename, filter = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", dir, filefilter)
-                filename = str(filename); filter = str(filter)
-                tableView.dataTable.save(filename)
+                self.saveTable(tableView)
             elif bn == QtGui.QMessageBox.Cancel:
                 return
             elif bn == QtGui.QMessageBox.Discard:
                 pass
 
         tableView.setParent(None)
+        if self.count() == 0: self.newTable("results")
+    
+    def handleContextMenuReq(self, pos):
+        tab = self.tabBar().tabAt(pos)
+        tableView = self.widget(tab)
+        
+        menu = QtGui.QMenu()
+        actionNew    = menu.addAction("New Table")
+        actionSave   = menu.addAction("Save Table")
+        actionActive = menu.addAction("Make Active")
+        action = menu.exec_(QtGui.QCursor.pos())
+        
+        if action == actionNew:
+            name, ok = QtGui.QInputDialog.getText(self, "New Table", "Name for new table:", text = "results")
+            if ok: self.newTable(name = str(name))
+        elif action == actionSave:
+            self.saveTable(tableView)
+        elif action == actionActive:
+            pass
 
 if __name__ == "__main__":
     QtGui.QApplication.setGraphicsSystem("raster")
@@ -738,8 +774,8 @@ if __name__ == "__main__":
     #dataTable.save("dump.csv")
 
     tabs = DataTableTabs()
-    tabs.addTable("test 1", DataTableView(dataTable))
-    tabs.addTable("test 2", DataTableView(dataTable))
+    tabs.newTable("test 1", DataTableView(dataTable))
+    tabs.newTable("test 2", DataTableView(dataTable))
     tabs.show()
 
     app.exec_()
