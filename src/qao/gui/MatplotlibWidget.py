@@ -45,6 +45,10 @@ class MatplotlibWidget(QtGui.QWidget):
     def clearPlots(self):
         self.plotGroups = []
         self._needSetupFigure = True
+    
+    def resizeEvent(self, event):
+        w, h = event.size().width(), event.size().height()
+        self.fig.subplots_adjust(left = 30./w, right = 1-5./w, top = 1-5./h, bottom = 50./h, hspace = 70./h)
         
     def newPlotGroup(self):
         assert len(self.plotGroups) < len(self.colors)
