@@ -36,6 +36,7 @@ class MatplotlibWidget(QtGui.QWidget):
         layout.addWidget(self.navigation)
         
         # init other stuff
+        self.xlabel = ""
         self._needSetupFigure = True
         self._needSetupLines  = True
         self._needRescale     = True

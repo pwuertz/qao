@@ -3,10 +3,10 @@ import numpy as np
 def imageMoments(data, X = None, Y = None):
     data = np.asfarray(data)
     data = data * (1./data.sum())
-    if X == None: X = np.arange(data.shape[1])
-    if Y == None: Y = np.arange(data.shape[0])
-    X = np.asarray(X).reshape([1, data.shape[1]])
-    Y = np.asarray(Y).reshape([data.shape[0], 1])
+    if X == None: X = np.arange(data.shape[1], dtype = float)
+    if Y == None: Y = np.arange(data.shape[0], dtype = float)
+    X = np.asfarray(X).reshape([1, data.shape[1]])
+    Y = np.asfarray(Y).reshape([data.shape[0], 1])
     
     # calculate center
     mx = (X*data).sum()
