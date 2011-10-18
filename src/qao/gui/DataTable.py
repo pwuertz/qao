@@ -416,6 +416,8 @@ class DataTableModel(QtCore.QAbstractTableModel):
         return True
 
 class DataTableView(QtGui.QTableView):
+    default_path     = ""
+    default_path_tpl = ""
     
     def __init__(self, dataTable = None):
         QtGui.QTableView.__init__(self)
@@ -447,7 +449,8 @@ class DataTableView(QtGui.QTableView):
     
     def loadTemplate(self, fname):
         """
-        load table header and visual appearance from a file
+        load table header and visual appearance from a file.
+        this will drop all information from this table.
         """
         # try to load data from file
         try:
@@ -475,81 +478,34 @@ class DataTableView(QtGui.QTableView):
         # restore view properties
         self.horizontalHeader().restoreState(viewState)
         return True
-    
-    def setDataTable(self, dataTable):
-        self.setModel(DataTableModel(dataTable))
-        self.plotWidget.setDataTable(dataTable)
         
-    def setModel(self, model):
-        assert isinstance(model, DataTableModel)
-        self.dataTable = model.dataTable
-        return QtGui.QTableView.setModel(self, model)
+    def loadTemplateDialog(self):
+        filefilter = "Table Template (*.tpl)"
+        fname = QtGui.QFileDialog.getOpenFileNameAndFilter(self, "Load Template", DataTableView.default_path_tpl, filefilter)[0]
+        fname = str(fname)
+        if fname:
+            self.loadTemplate(fname)
+            DataTableView.default_path_tpl = os.path.dirname(fname)
+    
+    def saveTemplateDialog(self):
+        filefilter = "Table Template (*.tpl)"
+        fname = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Template", DataTableView.default_path_tpl, filefilter)[0]
+        fname = str(fname)
+        if fname:
+            if os.path.splitext(fname)[1] != ".tpl": fname += ".tpl"
+            self.saveTemplate(fname)
+            DataTableView.default_path_tpl = os.path.dirname(fname)
 
-    def headerContextMenu(self, pos):
-        col = self.horizontalHeader().logicalIndexAt(pos)
-        colName = self.dataTable.colInfo[col]["name"]
-        colFlags = self.dataTable.colInfo[col]["flags"]
-        isXPlot = "plotX" in colFlags
-        isYPlot = "plotY" in colFlags
-        isGPlot = "group" in colFlags 
-        
-        menu = QtGui.QMenu()
-        actionAsX  = menu.addAction("Plot as X")
-        actionAsX.setCheckable(True)
-        actionAsX.setChecked(isXPlot)
-        actionAsY  = menu.addAction("Plot as Y")
-        actionAsY.setCheckable(True)
-        actionAsY.setChecked(isYPlot)
-        actionAsG  = menu.addAction("Plot Group")
-        actionAsG.setCheckable(True)
-        actionAsG.setChecked(isGPlot)
-        actionPlot = menu.addAction("Show Plot")
-        
-        menu.addSeparator()
-        actionExpression = menu.addAction("Set Expression")
-        actionRecalculate = menu.addAction("Recalculate Column")
-        
-        menu.addSeparator()
-        actionAdd    = menu.addAction("Add Column")
-        actionDelete = menu.addAction("Delete Column")
-        actionHide   = menu.addAction("Hide Column")
-        actionShow   = menu.addAction("Show Columns")
-        
-        # remove some items
-        actionDelete.setVisible("persistent" not in colFlags)
-        actionRecalculate.setVisible("dynamic" in colFlags)
-        
-        action = menu.exec_(QtGui.QCursor.pos())
-        
-        if action == actionAsX:
-            self.plotWidget.setColumnAsX(col, not isXPlot)
-        elif action == actionAsY:
-            self.plotWidget.setColumnAsY(col, not isYPlot)
-        elif action == actionAsG:
-            self.plotWidget.setColumnAsG(col, not isGPlot)
-        elif action == actionPlot:
-            self.plotWidget.show()
-            
-        elif action == actionExpression:
-            expr = self.dataTable.colInfo[col]["expression"]
-            expr, ok = QtGui.QInputDialog.getText(self, "Set Expression", "Evaluate for Column '%s':" % colName, text=expr)
-            if ok: self.dataTable.setDynamic(col, str(expr))
-        elif action == actionRecalculate:
-            self.dataTable.updateDynamic(col=col)
-            
-        elif action == actionAdd:
-            name, ok = QtGui.QInputDialog.getText(self, "Add Column", "Name:")
-            if ok: self.dataTable.addColumns([str(name)])
-        elif action == actionDelete:
-            name = self.dataTable.colInfo[col]["name"]
-            buttons = QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
-            answer = QtGui.QMessageBox.question(self, "Delete Column", "Delete column '%s' and all its contents?" % name, buttons)
-            if answer == QtGui.QMessageBox.Yes: self.dataTable.removeColumn(col)
-        elif action == actionHide:
-            self.hideColumn(col)
-        elif action == actionShow:
-            self.showColumnDialog()
-    
+    def saveTableDialog(self):
+        filefilter = ["CSV File (*.csv)", "Python File (*.py)"]
+        fname, filt = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", DataTableView.default_path, ";;".join(filefilter))
+        fname = str(fname)
+        if fname:
+            filt = {0: ".csv", 1: ".py"}[filefilter.index(str(filt))]
+            if os.path.splitext(fname)[1] != filt: fname += filt
+            self.dataTable.save(fname)
+            DataTableView.default_path = os.path.dirname(fname)
+
     def showColumnDialog(self):
         # build list for columns and visibility
         colNames   = self.dataTable.colInfo["name"].tolist()
@@ -572,6 +528,96 @@ class DataTableView(QtGui.QTableView):
         layout = QtGui.QVBoxLayout(dialog)
         layout.addWidget(listWidget)
         dialog.exec_()
+    
+    def setDataTable(self, dataTable):
+        self.setModel(DataTableModel(dataTable))
+        self.plotWidget.setDataTable(dataTable)
+        
+    def setModel(self, model):
+        assert isinstance(model, DataTableModel)
+        self.dataTable = model.dataTable
+        return QtGui.QTableView.setModel(self, model)
+    
+    def getColumnActions(self, col):
+        colFlags = self.dataTable.colInfo[col]["flags"]
+        colName  = self.dataTable.colInfo[col]["name"]
+        isXPlot  = "plotX" in colFlags
+        isYPlot  = "plotY" in colFlags
+        isGPlot  = "group" in colFlags
+        
+        # plotting
+        actionAsX = QtGui.QAction("Plot as X", None)
+        actionAsX.setCheckable(True)
+        actionAsX.setChecked(isXPlot)
+        actionAsX.triggered.connect(lambda: self.plotWidget.setColumnAsX(col, not isXPlot))
+        actionAsY  = QtGui.QAction("Plot as Y", None)
+        actionAsY.setCheckable(True)
+        actionAsY.setChecked(isYPlot)
+        actionAsY.triggered.connect(lambda: self.plotWidget.setColumnAsY(col, not isYPlot))
+        actionAsG  = QtGui.QAction("Plot Group", None)
+        actionAsG.setCheckable(True)
+        actionAsG.setChecked(isGPlot)
+        actionAsG.triggered.connect(lambda: self.plotWidget.setColumnAsG(col, not isGPlot))
+        
+        # dynamic expressions
+        def expressionFunc():
+            expr = self.dataTable.colInfo[col]["expression"]
+            expr, ok = QtGui.QInputDialog.getText(self, "Set Expression", "Evaluate for Column '%s':" % colName, text=expr)
+            if ok: self.dataTable.setDynamic(col, str(expr))
+        actionExpression = QtGui.QAction("Set Expression", None)
+        actionExpression.triggered.connect(expressionFunc)
+        actionRecalculate = QtGui.QAction("Recalculate Column", None)
+        actionRecalculate.setVisible("dynamic" in colFlags)
+        actionRecalculate.triggered.connect(lambda: self.dataTable.updateDynamic(col=col))
+        
+        # hide / delete
+        actionHide = QtGui.QAction("Hide Column", None)
+        actionHide.triggered.connect(lambda: self.hideColumn(col))
+        def deleteFunc():
+            buttons = QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
+            answer = QtGui.QMessageBox.question(self, "Delete Column", "Delete column '%s' and all its contents?" % colName, buttons)
+            if answer == QtGui.QMessageBox.Yes: self.dataTable.removeColumn(col)
+        actionDelete = QtGui.QAction("Delete Column", None)
+        actionDelete.setVisible("persistent" not in colFlags)
+        actionDelete.triggered.connect(deleteFunc)
+        
+        def sep():
+            sep = QtGui.QAction("", None); sep.setSeparator(True)
+            return sep
+        
+        return [actionAsX, actionAsY, actionAsG, sep(),
+                actionExpression, actionRecalculate, sep(),
+                actionHide, actionDelete]
+    
+    def getTableActions(self):
+        actionSave = QtGui.QAction("Save Table", None)
+        actionSave.triggered.connect(self.saveTableDialog)
+        actionSaveTpl = QtGui.QAction("Save Template", None)
+        actionSaveTpl.triggered.connect(self.saveTemplateDialog)
+        actionShowCol = QtGui.QAction("Show Columns", None)
+        actionShowCol.triggered.connect(self.showColumnDialog)
+        actionShowPlot = QtGui.QAction("Show Plot", None)
+        actionShowPlot.triggered.connect(self.plotWidget.show)
+        def addColFunc():
+            name, ok = QtGui.QInputDialog.getText(self, "Add Column", "Name:")
+            if ok: self.dataTable.addColumns([str(name)])
+        actionAddCol = QtGui.QAction("Add Column", None)
+        actionAddCol.triggered.connect(addColFunc)
+        
+        sep = QtGui.QAction("", None)
+        sep.setSeparator(True)
+        
+        return [actionSave, actionSaveTpl, sep, actionShowPlot, actionShowCol, actionAddCol]
+
+    def headerContextMenu(self, pos):
+        # create menu for this column
+        menu = QtGui.QMenu()
+        col = self.horizontalHeader().logicalIndexAt(pos)
+        for action in self.getColumnActions(col):
+            action.setParent(menu)
+            menu.addAction(action)
+        # show menu
+        menu.exec_(QtGui.QCursor.pos())
     
     def contextMenuEvent(self, event):
         rows = [index.row() for index in self.selectionModel().selectedRows()]
@@ -694,6 +740,8 @@ class DataTableTabs(QtGui.QTabWidget):
         self.tabBar().customContextMenuRequested.connect(self.handleContextMenuReq)
         self.tabCloseRequested.connect(self.handleTabClose)
         
+        self.activeTable = None
+        
     def setDefaultIdKey(self, default_id_key):
         self.default_id_key = default_id_key
     
@@ -705,21 +753,17 @@ class DataTableTabs(QtGui.QTabWidget):
             dataTable = DataTable(id_key = self.default_id_key)
             tableView = DataTableView(dataTable)
         self.addTab(tableView, name)
+        self.setCurrentIndex(self.count()-1)
+        self.setActiveTable(self.count()-1)
+        return tableView
     
-    def newFromTemplate(self, name, filename):
-        pass
-    
-    def saveTable(self, tableView):
-        dir = ""; filefilter = "CSV File (*.csv);;Python File (*.py)"
-        filename, filter = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", dir, filefilter)
-        filename = str(filename); filter = str(filter)
-        if filename: tableView.dataTable.save(filename)
-    
-    def saveTemplate(self, tableView):
-        dir = ""; filefilter = "Table Layout (*.dtl)"
-        filename, filter = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table Layout", dir, filefilter)
-        filename = str(filename); filter = str(filter)
-        if filename: tableView.saveTemplate(filename)
+    def setActiveTable(self, tab):
+        for i in range(self.count()):
+            title = str(self.tabText(i))
+            if title[-1] == "*": self.setTabText(i, title[:-1])
+        tableView = self.widget(tab)
+        self.setTabText(tab, str(self.tabText(tab))+"*")
+        self.activeTable = tableView
     
     def handleTabClose(self, tab):
         tableView = self.widget(tab)
@@ -735,24 +779,41 @@ class DataTableTabs(QtGui.QTabWidget):
 
         tableView.setParent(None)
         if self.count() == 0: self.newTable("results")
-    
+        self.setActiveTable(self.count()-1)
+        
     def handleContextMenuReq(self, pos):
         tab = self.tabBar().tabAt(pos)
+        self.setCurrentIndex(tab)
         tableView = self.widget(tab)
         
-        menu = QtGui.QMenu()
-        actionNew    = menu.addAction("New Table")
-        actionSave   = menu.addAction("Save Table")
-        actionActive = menu.addAction("Make Active")
-        action = menu.exec_(QtGui.QCursor.pos())
-        
-        if action == actionNew:
+        # table tabs actions
+        actionActive = QtGui.QAction("Make Active", None)
+        actionActive.triggered.connect(lambda: self.setActiveTable(tab))
+        def newFunc():
             name, ok = QtGui.QInputDialog.getText(self, "New Table", "Name for new table:", text = "results")
             if ok: self.newTable(name = str(name))
-        elif action == actionSave:
-            self.saveTable(tableView)
-        elif action == actionActive:
-            pass
+        actionNew = QtGui.QAction("New Table", None)
+        actionNew.triggered.connect(newFunc)
+        def newTplFunc():
+            name, ok = QtGui.QInputDialog.getText(self, "New Table", "Name for new table:", text = "results")
+            if ok: tableView = self.newTable(name = str(name))
+            else: return
+            tableView.loadTemplateDialog()
+        actionNewTpl = QtGui.QAction("New Table from Template", None)
+        actionNewTpl.triggered.connect(newTplFunc)
+        
+        # collect actions
+        sep = QtGui.QAction("", None)
+        sep.setSeparator(True)
+        actions  = [actionActive, actionNew, actionNewTpl, sep]
+        actions += tableView.getTableActions()
+        
+        # build menu
+        menu = QtGui.QMenu()
+        for action in actions:
+            action.setParent(menu)
+            menu.addAction(action)
+        menu.exec_(QtGui.QCursor.pos())
 
 if __name__ == "__main__":
     QtGui.QApplication.setGraphicsSystem("raster")
