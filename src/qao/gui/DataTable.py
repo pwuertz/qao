@@ -514,7 +514,10 @@ class DataTableView(QtGui.QTableView):
         for i, name in enumerate(colNames):
             item = QtGui.QListWidgetItem(name)
             item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-            if not self.isColumnHidden(i): item.setCheckState(QtCore.Qt.Checked)
+            if not self.isColumnHidden(i):
+                item.setCheckState(QtCore.Qt.Checked)
+            else:
+                item.setCheckState(QtCore.Qt.Unchecked)
             listWidget.addItem(item)
             listItems.append(item)
         # on change, show/hide column
