@@ -461,17 +461,18 @@ class Agilent33500:
         self.voltOffset(off, unit, channel)
         self.addArbNormalized(data_norm, name=name, channel=channel)
     
-    def addSeq(self, name, arb_names, arb_controls="once", channel=1):
+    def addSeq(self, name, arb_names, arb_controls="once", arb_repetitions="1", channel=1):
         """
         arb_control item may be "once", "onceWaitTrig", "repeat"
         """
         # setup sequence control
         if type(arb_controls) != list: arb_controls = [arb_controls] * len(arb_names)
+        if type(arb_repetitions) != list: arb_repetitions = [arb_repetitions] * len(arb_names)
         
         # build sequence block
         seqblocks = [name]
-        for arb_name, arb_control in zip(arb_names, arb_controls):
-            seqblocks.append("%s,0,%s,maintain,4" % (arb_name, arb_control))
+        for arb_name, arb_rep, arb_control in zip(arb_names, arb_repetitions, arb_controls):
+            seqblocks.append("%s,%s,%s,maintain,4" % (arb_name, arb_rep, arb_control))
         seqstr = ",".join(seqblocks)
         
         # send command
