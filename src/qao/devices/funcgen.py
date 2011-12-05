@@ -4,6 +4,10 @@
 import socket, numpy, sys
 
 class Agilent33220:
+    """
+    This class allows the remote controlling of Agilent 33220 devices.
+    """
+    
     __BUFSIZE__ = 1024
     __TIMEOUT__ = 4.0
     __DEFPORT__ = 5025
@@ -229,6 +233,9 @@ class Agilent33220:
 AgilentFuncGen = Agilent33220
 
 class Agilent33500:
+    """
+    This class allows the remote controlling of Agilent 33500 devices.
+    """
     __BUFSIZE__ = 1024
     __TIMEOUT__ = 4.0
     __DEFPORT__ = 5025

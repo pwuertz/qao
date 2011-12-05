@@ -1,6 +1,13 @@
 import socket
 
 class Eclex:
+    """
+    This class simplifies the information exchange from and to the Eclex Software
+    controlling the electron microscope. Once connected to Eclex, you can retrieve
+    status parameters like the faraday cup current, or modify settings like the
+    objective lens current.
+    """
+    
     __BUFSIZE__ = 1024
     __TIMEOUT__ = 6.0
     __DEFPORT__ = 25000

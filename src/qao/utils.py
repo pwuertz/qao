@@ -1,3 +1,8 @@
+"""
+Utility functions
+=================
+"""
+
 import os, bz2
 import numpy as np
 from PyQt4 import QtCore, QtGui
