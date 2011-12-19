@@ -1,3 +1,41 @@
+"""
+MessageBus
+----------
+
+Subscribe/Publish data sharing via TCP/IP . 
+
+The messageBus module implements a subscribe/publish scheme for data exchange
+between multiple applications within the same network. There are three types
+of entities in this scheme. A publisher who wants to send data to whoever is
+interested in, a subscriber who wants to be informed when new data related to
+a specific topic is available, and a server connecting all participants.
+
+.. note::
+
+    Running this module as main routine starts a messageBus server with default
+    settings, listening on all available network interfaces.
+
+A simple publishing client is an application which connects to the server,
+publishes information and quits afterwards.
+
+    >>> data = ["hello", "world"]
+    >>> simplePublish("some topic", data, "localhost")
+
+A subscriber is usually an application which keeps running and waits for new
+data to be received. You connect this client to the server first, and subscribe
+to a specific topic you want to receive callbacks for.
+
+    >>> client = MessageBusClient()
+    >>> client.connectToServer("localhost")
+    >>> 
+    >>> def doSomething(*args):
+    >>>     print args
+    >>> client.subscribe("some topic", callback = doSomething):
+    >>> 
+    >>> # run qt main loop
+"""
+
+
 # memory debug
 try:
     import guppy.heapy.RM
@@ -25,12 +63,41 @@ TYPE_ACK         = "ack"
 TYPE_NAK         = "nak"
 
 def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
+    """
+    Publish new data on a messageBus server.
+    
+    This is a simple fire-and-forget function for publishing data. It connects
+    to a server, publishes the given data, and returns when the data is sent. It
+    is useful for small scripts exporting data.
+    
+    :param topic: (str) The topic for the messageBus event.
+    :param data: (object) Any python object that can be serialized via cPickle.
+    :param hostname: (str) The hostname of the messageBus server.
+    :param port: (int) TCP port to connect to.
+    """
     c = MessageBusClient()
     c.connectToServer(hostname, port)
     c.publishEvent(topic, data)
     c.waitForEventPublished()
 
 class MessageBusClient(QtCore.QObject):
+    """
+    Class for sending/receiving data to/from the messageBus.
+    
+    A messageBus client keeps a persistent connection to a server, being
+    able to publish new data or subscribe and recieve data from the bus.
+    
+    You first need a connection to a messageBus server.
+    
+        >>> client = MessageBusClient()
+        >>> client.connectToServer("localhost")
+    
+    The client object is assumed to live in the context of a qt application,
+    with a event-loop that handles network traffic. All you have to do is to
+    register callbacks for topics you want to receive notifications and data
+    for using the :func:`subscribe` method. Sending data to the bus is
+    possible using the :func:`publishEvent` method.
+    """
     
     receivedEvent = qtSignal(str, object)
     connected = qtSignal()
@@ -48,30 +115,81 @@ class MessageBusClient(QtCore.QObject):
         self.subscriptionCallbacks = {}
         
     def connectToServer(self, host, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT):
+        """
+        Connect the client to a messageBus server.
+        
+        :param host: (str) Hostname of the server.
+        :param port: (int) TCP port of the service.
+        :param timeout: (int) Connection timeout in milliseconds.
+        """
         self.connection.connectToHost(host, port)
         if not self.connection.waitForConnected(timeout): raise Exception("no connection to event server")
     
     def disconnectFromServer(self):
+        """
+        Disconnect the client from the current messageBus server.
+        """
         self.connection.disconnectFromHost()
     
     def isConnected(self):
+        """
+        Check if the client is connected to a server.
+        :returns: (bool) Connection status.
+        """
         return self.connection.state() == self.connection.ConnectedState
         
     def subscribe(self, topic, callback = None):
+        """
+        Subscribe to a topic on the currently connected bus.
+        
+        Whenever new data is published on the messageBus server, the data is
+        forwarded to the registered callback function if the subscribed topic
+        matches. If you already subscribed for this topic, the previously
+        registered callback function will be replaced by the new one.
+        
+        :param topic: (str) Topic to receive events for.
+        :param callback: (callable) Callback function for new events. 
+        """
         topic = str(topic)
         self._sendPacket([TYPE_SUBSCRIBE, topic])
         if callback: self.subscriptionCallbacks[topic] = callback
 
     def unsubscribe(self, topic):
+        """
+        Unsubscribe from a topic on the currently connected bus.
+        
+        Remove your subscription means that you will no longer receive
+        callbacks for the unsubscribed topic.
+        :param topic: (str) Topic to unsubscribe from.
+        """
         topic = str(topic)
         self._sendPacket([TYPE_UNSUBSCRIBE, topic])
         if topic in self.subscriptionCallbacks: self.subscriptionCallbacks.remove(topic)
         
     def publishEvent(self, topic, data):
+        """
+        Publish data on the connected messageBus.
+        
+        This methods sends new data to the messageBus, making it available
+        for anyone who subscribed to the given topic. Any data will be
+        automatically serialized by cPickle and sent to the subscribers.
+        
+        :param topic: (str) Topic for the published data.
+        :param data: (object) Any python object that can be serialized via cPickle.
+        """
         topic = str(topic)
         self._sendPacket([TYPE_PUBLISH, topic, data])
         
     def waitForEventPublished(self, timeout = DEFAULT_TIMEOUT):
+        """
+        Block until all data is sent.
+        
+        The messageBus client is using asynchronous transfers. When the publishEvent
+        method returns, the client has not finished sending the data to the server yet.
+        This method will block until the message has been sent, or raise an exception.
+        
+        :param timeout: (int) Maximum time to wait for data to be sent.
+        """
         while self.connection.bytesToWrite() > 0:
             self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
     

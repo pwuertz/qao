@@ -1,5 +1,8 @@
 """
-This module provides utility functions for reading and writing scientific image data from and to files.
+Imagefile
+---------
+
+Provides utility functions for reading and writing scientific image data from and to files.
 
 Being both flexible and efficient, HDF5 has been chosen as preferred file format for storing data.
 The functions in this module are provided for conveniently accessing this data while fulfilling conventions
@@ -62,6 +65,9 @@ def loadAbsorptionImage(filename):
         and `metadata` contains the attributes found in the data file.
     
     .. seealso:: :func:`saveAbsorptionImage`
+    
+    Example:
+        >>> abs_image, other_images, metadata = loadAbsorptionImage("random.hdf5")
     """
     
     # open absorption image
