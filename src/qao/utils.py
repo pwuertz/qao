@@ -10,8 +10,36 @@ from scipy import ndimage
 
 def drawPolygonMask(width, height, points):
     """
-    Draw a convex polygon defined by points into a numpy array.
-    The pixel value inside the polygon is 1.0, else 0.0.   
+    Draw a convex polygon defined by a list of points.
+    
+    A polygon is drawn into a zeroed numpy array with
+    dimensions (height, width), so the pixel value inside
+    the polygon is 1.0, else 0.0.
+    
+    The points are given by a list of (x, y) coordinate
+    tuples.
+    
+    :param width: Width of the 2d array.
+    :param height: Height of the 2d array.
+    :param points: List of (x, y) coordinates.
+    :returns: (ndarray) Polygon mask.
+    
+    Example::
+    
+        points = [(10, 10), (100, 20), (110, 50), (20, 40)]
+        mask = drawPolygonMask(300, 100, points)
+        
+    .. plot::
+    
+        import pylab as p
+        from qao.utils import drawPolygonMask
+        points = [(10, 10), (100, 20), (110, 50), (20, 40)]
+        mask = drawPolygonMask(300, 100, points)
+        
+        p.figure(figsize=(4,1.6))
+        p.gray()
+        p.imshow(mask)
+        p.show()
     """
     # convert points to QPointF
     points = [QtCore.QPointF(x,y) for x,y in points]
@@ -39,41 +67,74 @@ def drawPolygonMask(width, height, points):
 def angle_mean(angle_list_rad):
     """
     Calculate the mean angle from a list of angles in radians.
-    Length is a measure of spreading (0 = full spread).
-    Returns [mean, length]
+    
+    A list of unity vectors, with the direction given by the
+    list of angles is created and the sum is calculated. The
+    resulting direction is the mean angle, the length of the
+    vector sum may be interpreted as measure of spread.
+    
+    :returns: (mean, length) Mean angle in rad, Length.
+    
+    .. seealso:: :func:`angle_mean_std`
+    
+    Example::
+    
+        >>> angle_list = [0., 1., 2.]
+        >>> angle_mean(angle_list)
+        (1.0, 0.69353487057875984)
     """
     angle_list = np.array(angle_list_rad)
     xmean = np.cos(angle_list).sum()
     ymean = np.sin(angle_list).sum()
     phi_mean = np.arctan2(ymean,xmean)
     rel_length = np.sqrt(xmean**2+ymean**2) / len(angle_list)
-    return [phi_mean, rel_length]
+    return (phi_mean, rel_length)
 
 def angle_mean_deg(angle_list_deg):
     """
-    Calculate the mean angle from a list of angles in degrees.
-    Length is a measure of spreading (0 = full spread).
-    Returns [mean, length]
+    Convenience function for calculating the mean angle from
+    a list of angles in degrees.
+    
+    :returns: (mean, length) Mean angle in deg, Length.
+    
+    .. seealso:: :func:`angle_mean_std`
     """
     angle_list_rad = np.array(angle_list_deg) * np.pi / 180
     phi_rad, rel_length = angle_mean(angle_list_rad)
     return [phi_rad * 180. / np.pi, rel_length]
 
-def angle_mean_std(angles_rag):
+def angle_mean_std(angles_rad):
     """
     Calculate the mean angle and the standard deviation from a
     list of angles in radians.
-    Returns [mean, std]
+    
+    :returns: (mean, std) Mean angle and standard deviation in rad.
+    
+    Example::
+    
+        >>> angles_rad = [0., 1., -1.]
+        >>> angle_mean_std(angles_rad)
+        (0.0, 0.81649658092772603)
     """
-    angles_rag = np.asfarray(angles_rag)
-    mean_angles = np.angle(np.exp(1j*angles_rag).sum())
-    std_angles  = np.std((((angles_rag - mean_angles) + np.pi) % (2*np.pi)) - np.pi)
+    angles_rad = np.asfarray(angles_rad)
+    mean_angles = np.angle(np.exp(1j*angles_rad).sum())
+    std_angles  = np.std((((angles_rad - mean_angles) + np.pi) % (2*np.pi)) - np.pi)
     return mean_angles, std_angles
 
 def findMostFrequent(data):
     """
-    finds the most frequent element in a list
-    returns tuple (element, number of occurrences)
+    Finds the most frequent element in a list.
+    
+    The element with the most occurrences within a list is
+    returned along with the number of occurrences.
+    
+    :returns: (object, n) List element, number of occurrences.
+    
+    Example::
+    
+        >>> data = [1, 2, 1, 3, 5, 1]
+        >>> findMostFrequent(data)
+        (1, 3)
     """
     
     if not isinstance(data, np.ndarray):
@@ -88,14 +149,22 @@ def findMostFrequent(data):
 
 def add(array1, array2):
     """
-    adds two arrays of different shape.
-    returns array with shape=(max(height1,height2),max(width1,width2))
+    Adds two 2d-arrays of different shape.
     
-    Example:
-    >>> a = np.ones((3, 5))
-    >>> b = np.ones((3, 3))
-    >>> add(a, b).shape
-    (3, 5)
+    If the size of the arrays does not match, the arrays are
+    zero-padded accordingly. The shape of the sum is therefore
+    (max(height1,height2) , max(width1,width2)).
+    
+    :param array1: First 2d-array.
+    :param array2: Second 2d-array.
+    :returns: (ndarray) Zero-padded sum of array1 + array2.
+    
+    Example::
+    
+        >>> a = np.ones((3, 5))
+        >>> b = np.ones((3, 3))
+        >>> add(a, b).shape
+        (3, 5)
     """
     (height1, width1) = array1.shape
     (height2, width2) = array2.shape
@@ -111,7 +180,20 @@ def add(array1, array2):
 
 def shift(data, pixels_x, pixels_y):
     """
-    move all pixels by pixels_x to the left (-x) and pixels_y upwards (-y)
+    Shift pixels of an image to the left/right or up/down.
+    
+    The image dimensions are not changed, pixels moving out of
+    the image are lost. Pixels appearing from the corners are
+    considered to be zero.
+    
+    :param data: (ndarray) Image to be shifted.
+    :param pixels_x: (int) Move by n pixels to the left.
+    :param pixels_y: (int) Move by n pixels upwards. 
+    :returns: (ndarray) Shifted image.
+    
+    .. note::
+    
+        This method should be deprecated in favor of :func:`scipy.ndimage.shift`
     """
     pixels_x = round(pixels_x)
     pixels_y = round(pixels_y)
@@ -135,7 +217,19 @@ def shift(data, pixels_x, pixels_y):
 
 def rebin(d, binsize):
     """
-    Rebin a numpy array d. The length of the output array will be d.size/binsize. 
+    Rebin an array. The length of the output array will be oldsize/binsize.
+    
+    The binsize must be an integer divisor of the array's size.
+    
+    :param d: (ndarray) Array to be binned.
+    :param binsize: (int) Size of the new bins.
+    :returns: (ndarray) Binned array.
+    
+    Example::
+    
+        >>> a = np.array([1,1,2,2,3,3])
+        >>> rebin(a, 2)
+        array([2, 4, 6])
     """
     if d.size % binsize != 0: raise Exception('invalid binsize')
     d = d.reshape([d.size/binsize, binsize])
@@ -143,8 +237,18 @@ def rebin(d, binsize):
 
 def autocorr2d_sum(data_list):
     """
-    Calculate the 2d autocorrelation of each numpy 2d-array in data_list.
-    Return the sum of all autocorrelations.
+    Calculate the sum of autocorrelations for a list of 2d-arrays.
+    
+    Each array in the list is zero-padded and fast fourier transformed.
+    The inverse fourier transform of all power spectra is equivalent
+    to the 2d autocorrelation function.
+    
+    The width and height of the result is twice as large due to the zero
+    padding, preventing circular convolution. The origin of the autocorrelation
+    is in the center of the returned array. 
+    
+    :param data_list: ([ndarray]) List of 2d arrays to be autocorrelated.
+    :returns: (ndarray) Sum of all autocorrelations from `data_list`.
     """
     h, w = data_list[0].shape
     
@@ -163,10 +267,21 @@ def autocorr2d_sum(data_list):
 
 def parab_interpolation(data, xi, yi):
     """
-    Calculate the center of a paraboloid defined at (xi,yi).
-    z(x,y) = ax(x-x0)^2 + ay(y-y0)^2 + z0
+    Interpolate a peak maximum position within a 2d-image
+    using paraboloid approximation.
     
-    Returns: x0, y0, z0
+    For a given `data` array and given coordinates, perform
+    a parabolic interpolation of the highest value within the 3x3
+    pixel box centered at (xi, yi).
+    
+    .. math::
+    
+        z(x,y) = a_x (x-x0)^2 + a_y (y-y0)^2 + z0
+    
+    :param data: (ndarray) 2d-array containing the image data. 
+    :param xi: (int) Index of the 3x3 interpolation box center.
+    :param yi: (int) Index of the 3x3 interpolation box center. 
+    :returns: (x0, y0, z0) Paraboloid center according to formula.
     """
     
     # get the maximum and the 4 neighbouring points 
@@ -182,7 +297,10 @@ def parab_interpolation(data, xi, yi):
 
 def npsavebz(fname, d):
     """
-    Save a numpy array to a bz2 compressed file. 
+    Save a numpy array to a bz2 compressed file.
+    
+    :param fname: (str) Filename for saving.
+    :param d: (ndarray) Array to be saved.
     """
     f = bz2.BZ2File(fname, "w")
     np.save(f, d)
@@ -190,7 +308,10 @@ def npsavebz(fname, d):
     
 def nploadbz(fname):
     """
-    Load an array from a bz2 compressed numpy file. 
+    Load an array from a bz2 compressed numpy file.
+    
+    :param fname: (str) Filename to load the array from.
+    :returns: (ndarray) Array loaded from file.
     """
     f = bz2.BZ2File(fname, "r")
     d = np.load(f)
@@ -198,6 +319,11 @@ def nploadbz(fname):
     return d
     
 def rotate(data, degrees):
+    """
+    .. note::
+    
+        This function is just an alias to :func:`scipy.ndimage.rotate` now.
+    """
     return ndimage.rotate(data, degrees)
 
 if __name__ == "__main__":

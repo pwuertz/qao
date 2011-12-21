@@ -1,3 +1,7 @@
+#
+# This module is deprecated and should not be used anymore
+#
+
 import numpy
 from scipy import optimize, interpolate, polyfit
 import utils

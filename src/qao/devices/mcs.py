@@ -1,3 +1,18 @@
+"""
+MCS
+--------------
+
+This module implements a python wrapper for the Ortec MCS-pci device.
+
+The wrapper makes use of the "McbCIO32.dll" which is part of the Ortec
+driver installed along with the MCS-32 Software.
+
+.. note::
+
+    This piece of hardware might not be used in the future anymore,
+    as a solution using the ADwin realtime system as multichannel buffer
+    is being developed.
+"""
 import time
 import ctypes
 import numpy

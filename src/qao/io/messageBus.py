@@ -16,35 +16,36 @@ a specific topic is available, and a server connecting all participants.
     settings, listening on all available network interfaces.
 
 A simple publishing client is an application which connects to the server,
-publishes information and quits afterwards.
+publishes information and quits afterwards::
 
-    >>> data = ["hello", "world"]
-    >>> simplePublish("some topic", data, "localhost")
+    data = ["hello", "world"]
+    simplePublish("some topic", data, "localhost")
 
 A subscriber is usually an application which keeps running and waits for new
 data to be received. You connect this client to the server first, and subscribe
-to a specific topic you want to receive callbacks for.
+to a specific topic you want to receive callbacks for::
 
-    >>> client = MessageBusClient()
-    >>> client.connectToServer("localhost")
-    >>> 
-    >>> def doSomething(*args):
-    >>>     print args
-    >>> client.subscribe("some topic", callback = doSomething):
-    >>> 
-    >>> # run qt main loop
+    client = MessageBusClient()
+    client.connectToServer("localhost")
+    
+    def doSomething(*args):
+        print args
+    client.subscribe("some topic", callback = doSomething)
+    
+    # run qt main loop
 """
 
+if __name__ == "__main__":
+    # enable memory debugger if possible
+    try:
+        import guppy.heapy.RM
+        from guppy import hpy; hp=hpy()
+        print "enabled heapy memory debug"
+    except ImportError:
+        pass
 
-# memory debug
-try:
-    import guppy.heapy.RM
-    from guppy import hpy; hp=hpy()
-    print "enabled heapy memory debug"
-except:
-    pass
-
-import sys, cPickle
+import sys
+import cPickle
 try:
     from PyQt4 import QtCore, QtNetwork
     from PyQt4.QtCore import pyqtSignal as qtSignal
@@ -87,13 +88,13 @@ class MessageBusClient(QtCore.QObject):
     A messageBus client keeps a persistent connection to a server, being
     able to publish new data or subscribe and recieve data from the bus.
     
-    You first need a connection to a messageBus server.
+    You first need a connection to a messageBus server::
     
-        >>> client = MessageBusClient()
-        >>> client.connectToServer("localhost")
+        client = MessageBusClient()
+        client.connectToServer("localhost")
     
     The client object is assumed to live in the context of a qt application,
-    with a event-loop that handles network traffic. All you have to do is to
+    with an event-loop that handles network traffic. All you have to do is to
     register callbacks for topics you want to receive notifications and data
     for using the :func:`subscribe` method. Sending data to the bus is
     possible using the :func:`publishEvent` method.
@@ -349,11 +350,11 @@ class MessageBusServer(QtCore.QObject):
         print "client disconnected (active connections: %d)" % len(self.clients)
 
 if __name__ == "__main__":
+    # enable CTRL+C break
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     
-    print "Starting MessageServer at port %d" % DEFAULT_PORT
-    
+    # implement basic console server
     class ConsoleServer(MessageBusServer):
         def __init__(self):
             MessageBusServer.__init__(self)
@@ -362,7 +363,7 @@ if __name__ == "__main__":
         def printEventPublished(self, topic, data):
             print "new event: %s" % str(topic)
     
+    print "Starting MessageServer at port %d" % DEFAULT_PORT
     app = QtCore.QCoreApplication([])
     serv = ConsoleServer()
-    
     app.exec_()

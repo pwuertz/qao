@@ -1,17 +1,14 @@
-#############################################
-# QCI module for python
-# read/write qcamera image files (qci)
-#
-# This class can load/save images saved in
-# the QCI1 container. It is used for backward
-# compatibility.
-#
-# class qci
-#    +image_data
-#    +image_parameters
-#    +save()
-#
-#############################################
+"""
+QCIv1
+---------
+
+.. warning::
+
+    This module should only be used for reading old files. For saving
+    scientific data to files, please use HDF5 based approaches.
+
+Module for reading/writing QCamera image files (version 1).
+"""
 
 import numpy
 import struct

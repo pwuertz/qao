@@ -1,13 +1,14 @@
-#############################################
-# QCI module for python
-# read/write qcamera image files (qci)
-#
-# class qci
-#    +image_data
-#    +image_parameters
-#    +save()
-#
-#############################################
+"""
+QCI
+---------
+
+.. warning::
+
+    This module should only be used for reading old files. For saving
+    scientific data to files, please use HDF5 based approaches.
+
+Module for reading/writing QCamera image files.
+"""
 
 import numpy
 import struct, bz2

@@ -6,7 +6,7 @@ Provides utility functions for reading and writing scientific image data from an
 
 Being both flexible and efficient, HDF5 has been chosen as preferred file format for storing data.
 The functions in this module are provided for conveniently accessing this data while fulfilling conventions
-for structure and naming. 
+for structure and naming.
 """
 
 import os
@@ -31,10 +31,11 @@ def saveAbsorptionImage(filename, absImage, signalImage = None, flatImage = None
 
     .. seealso:: :func:`loadAbsorptionImage`
     
-    Example:
-        >>> data = numpy.random.rand(512, 512)
-        >>> info = {"dwell_ms": 2.0}
-        >>> saveAbsorptionImage("random.hdf5", absImage=data, signalImage=data, metadata=info)
+    Example::
+    
+        data = numpy.random.rand(512, 512)
+        info = {"dwell_ms": 2.0}
+        saveAbsorptionImage("random.hdf5", absImage=data, signalImage=data, metadata=info)
     
     """
     # check/append file extension
@@ -66,8 +67,10 @@ def loadAbsorptionImage(filename):
     
     .. seealso:: :func:`saveAbsorptionImage`
     
-    Example:
-        >>> abs_image, other_images, metadata = loadAbsorptionImage("random.hdf5")
+    Example::
+    
+        abs_image, other_images, metadata = loadAbsorptionImage("random.hdf5")
+        
     """
     
     # open absorption image

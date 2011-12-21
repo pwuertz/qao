@@ -1,7 +1,17 @@
-#############################################
-# QMI module for python
-# read/write quantum microscope images (qmi)
-#############################################
+"""
+QMI
+---------
+
+.. warning::
+
+    This module should only be used for reading old files. For saving
+    scientific data to files, please use HDF5 based approaches.
+
+Module for reading/writing scientific data to binary files.
+
+QMI is a homebrew file-format for storing 2d arrays with supplementary
+metadata to compressed files.
+"""
 
 import os
 import numpy
@@ -10,7 +20,9 @@ import xml.dom.minidom
 
 class qmi:
     def __init__(self, width=100, height=100, filename=None):
-        "create a blank 100x100 image of ints"
+        """
+        Create a blank 100x100 image of ints.
+        """
         self.filename = filename
         self.image_data = numpy.zeros([height, width], numpy.int)
         self.image_parameters = {}
@@ -36,7 +48,9 @@ class qmi:
         return new
 
     def __buildXML(self, compr):
-        "build the xml information block"
+        """
+        Build the xml information block.
+        """
         # create xml document
         doc = xml.dom.minidom.Document()
         qmi_root = doc.createElement("QMI")
@@ -74,12 +88,16 @@ class qmi:
     
     def shift(self, pixels_x, pixels_y):
         """
-        move all pixels by pixels_x to the left (-x) and pixels_y upwards (-y)
+        Move all pixels by pixels_x to the left (-x) and pixels_y upwards (-y).
+        
+        TODO: deprecated, use scipy.ndimage to do this
         """       
         self.image_data = utils.shift(self.image_data, pixels_x, pixels_y)
         
     def save(self, filename = None, compr = "bz2"):
-        "save image to file, if no filename is given, try to reuse old filename"
+        """
+        Save image to file, if no filename is given, try to reuse old filename.
+        """
         if not filename:
             if not self.filename: raise RuntimeError("don't know where to save the file")
             filename = self.filename
@@ -100,7 +118,7 @@ class qmi:
        
     def saveAscii(self, filename):
         """
-        save the x,y coordinate of each ion as text file
+        Save the x,y coordinate of each ion as text file.
         """
         if self.image_data.dtype != numpy.int:
             raise TypeError("only integer type images may be ascii-saved")
@@ -130,7 +148,8 @@ class qmi:
 
 def sum(qmi_list):
     """
-    summarize a list of qmi images and return a new qmi object
+    Take all images from the qmi list and return the sum of all
+    images as new qmi image.
     """
     assert type(qmi_list) == list, "list of qmi objects required"
     qmi_sum = qmi_list[0].copy()
@@ -143,10 +162,9 @@ def load(filename, **kwargs):
     Load .ASC or .qmi files. If filename is a directory, all qmi files
     within the directory will be loaded and returned in a list.
     
-    optional kwargs:
-       callback_progress: call a function(filename, i, n)
-                          when loading files from a directory
-       callback: call a function(filename, qmi_image) after loading a file
+    :param filename: (str) Directory or file name.
+    :param callback_progress: Function object with args (filename, i, n).
+    :param callback: Function object with args (filename, qmi_image).
     """
     if (os.path.isdir(filename)):
         return __loadAllFromDir(filename, **kwargs)
@@ -157,12 +175,11 @@ def load(filename, **kwargs):
 
 def loadDir(directory, **kwargs):
     """
-    Load all .qmi files from a directory. 
-   
-    optional kwargs:
-       callback_progress: call a function(filename, i, n)
-                          when loading files from a directory
-       callback: call a function(filename, qmi_image) after loading a file
+    Load all .qmi files from a directory.
+    
+    :param filename: (str) Directory name. 
+    :param callback_progress: Function object with args (filename, i, n).
+    :param callback: Function object with args (filename, qmi_image).
     """
     # find qmi files in directory
     files = os.listdir(directory)
@@ -184,7 +201,7 @@ def loadDir(directory, **kwargs):
 def assembleFromAsc(directory, **kwargs):
     """
     Read all ASC files from this directory.
-    Summarize all images and return qmi object.
+    Return the sum as qmi object.
     """
     # find asc files in directory
     files = os.listdir(directory)

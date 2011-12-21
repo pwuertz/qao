@@ -1,29 +1,41 @@
-#
-# conventions
-#
-# data: a numpy 2d array 
-# linescan: a numpy 1d array
-# callback: a callable function with args (string msg, int i, int n)
-# length_guess: a spacing or wavelength measured in pixel units
-# k1, k2, k_vec: wave vectors
-# l1, l1: lattice vectors
-# qmi_list: a list of qmi images
-#
+"""
+Lattice2d
+---------
 
-import qao.utils as utils
+Provides utility functions for analyzing 2d lattice images.
 
+The functions in this module are designed for easy analysis of 2d lattice
+images. They are based on fast fourier transformations and fourier analysis
+to extract information like orientation and phase of lattice structures
+from image data.
+
+The high-level functions analyze images directly from files, the low-level
+functions operate on numpy arrays.
+"""
+
+import warnings
 import numpy as np
 from scipy import optimize
 
+import qao.utils as utils
+
 def findWaveVectorsFromDataList(data_list, length_guess):
     """
-    Find the wave vectors of the plain waves forming a 2d lattice.
-    data_list must be a list of numpy 2d-arrays.
+    Find the wave vectors of the two plane waves forming a 2d lattice.
     
-    A wavelength guess in units of pixels is required for the search.
-    An interval of +/- 10% of the wavelength guess will be searched.   
+    Assuming the images in data_list contain the signals of two plane
+    waves, determine the wave vectors k1 and k2 of these waves. The
+    phase of the waves may vary for each image, but it is assumed that
+    the wave vectors do not change. A wavelength guess in units of
+    pixels is required for this search, the target wavelength must be
+    within +/- 10% of the guess.
     
-    returns: k1, k2
+    This method searches for peaks in the sum of all power spectra to
+    find the wave vectors.
+    
+    :param data_list: ([ndarray]) List of images to be analyzed.
+    :param length_guess: (float) Wavelength guess in units of pixels.   
+    :returns: (k1, k2) Wave vectors for the two plane waves found.
     """
     
     # calculate the 2d autocorrelation with correct zero padding
@@ -35,7 +47,7 @@ def findWaveVectorsFromDataList(data_list, length_guess):
     ky = 2*np.pi * np.fft.fftshift(np.fft.fftfreq(autocorr2d.shape[0]))
     dkx, dky = kx[1]-kx[0], ky[1]-ky[0]
     
-    # clip to frequencies < kmax
+    # clip to frequencies between kmin and kmax
     k_min = 2*np.pi / (length_guess*1.1)
     k_max = 2*np.pi / (length_guess*0.9)
     ix1_clip = kx.size/2 - k_max/dkx - 1
@@ -73,12 +85,16 @@ def findWaveVectorsFromDataList(data_list, length_guess):
 
 def findPhasesFromDataList(data_list, k_vec):
     """
-    Assuming the image in data contains a plain wave represented by
-    wave vector k_vec, find the phase phi of the plain wave.
-    Phi=0 represents a maximum at the center of the image.
-    A signal amplitude normalized to the data.sum is also given.
+    Find the phase of a known plane wave for each image in a list.
     
-    returns: phi_array, rel_amplitude_array
+    Assuming the image in data contains a plane wave represented by
+    wave vector k_vec, find the phase :math:`\phi` of the plane wave,
+    where :math:`\phi = 0` represents a maximum at the center of the
+    image. An amplitude normalized to the data is also given.
+    
+    :param data_list: ([ndarray]) List of images to be analyzed.
+    :param k_vec: (ndarray) Wave vector for the analysis.
+    :returns: (phi_array, rel_amplitude_array)
     """
     
     # create a centered plain wave defined by k_vec 
@@ -93,32 +109,56 @@ def findPhasesFromDataList(data_list, k_vec):
 
 def reciprocalLattice2D(a1, a2):
     """
-    Calculate the reciprocal lattice vectors from lattice
-    vectors a1 and a2, assuming that a3 is (0,0,1).
+    Calculate the reciprocal lattice vectors from lattice vectors.
     
-    returns: b1, b2
+    The lattice vectors are assumed to be two-dimensional. For two
+    lattice vectors a1 and a2, calculate the reciprocal lattice vectors b1
+    and b2, assuming that the third lattice vector a3 is (0, 0, 1).
+    
+    :param a1: (array-like) First lattice vector.
+    :param a1: (array-like) Second lattice vector.
+    :returns: (b1, b2) Reciprocal lattice vectors.
+    
+    Example::
+    
+        >>> a1, a2 = (0,1), (1,0)
+        >>> reciprocalLattice2D(a1, a2)
+        (array([-0., 6.28318531]), array([6.28318531, -0.]))
     """
     V = a1[0]*a2[1] - a1[1]*a2[0]
-    b1 = (2*np.pi)/V * np.array([ a2[1],-a2[0]])
-    b2 = (2*np.pi)/V * np.array([-a1[1], a1[0]])
+    b1 = (2*np.pi)/V * np.asfarray([ a2[1],-a2[0]])
+    b2 = (2*np.pi)/V * np.asfarray([-a1[1], a1[0]])
     return b1, b2
 
 def polarCoords(vec):
     """
-    Return angle and length of a vector.
+    Return the polar coordinates of a vector with two components.
     
-    returns: phi, r
+    :param vec: (array-like) 2d-vector.
+    :returns: (phi, r) Polar angle phi, radius r.
+    
+    Example::
+    
+        >>> polarCoords([1,0])
+        (0.0, 1.0)
+        >>> polarCoords([0,-1])
+        (-1.5707963267948966, 1.0)
     """
-    return np.arctan2(vec[1],vec[0]), np.sqrt((np.array(vec)**2).sum())
+    return np.arctan2(vec[1],vec[0]), np.sqrt((np.asfarray(vec)**2).sum())
 
 def findPhase(data, k_vec):
     """
+    .. warning::
+    
+        Deprecated, use :func:`findPhasesFromDataList` instead.
+    
     Assuming the image in data contains a plain wave represented by
     wave vector k_vec, find the phase phi of the plain wave.
     Phi=0 represents a maximum at the center of the image.
     
     returns: phi, rel. correlation amplitude 
     """
+    warnings.warn("findPhase deprecated in favor of findPhasesFromDataList")
     
     # rotate image so k points to (1,0)
     angle, k = polarCoords(k_vec)
@@ -154,14 +194,19 @@ def findPhase(data, k_vec):
 
 def findWaveVectorsFromQmiList_new(qmi_list, spacing_guess_nm=600, limit=None, callback=None):
     """
-    Run findWaveVectors on the sum of all autocorrelated images in qmi_list.
-    Returns the two wave vectors from findWaveVectors.
+    Convenience function for running :func:`findWaveVectors` on a list
+    of qmi images.
     
-    spacing_guess_nm: Approximate wavelength of the plainwaves in nm.
-    limit: Stop accumulating autocorrelations after the first <limit> images.
-    callback: Report the current status by calling callback(message, i, n).
+    The guess for the lattice spacing may be given in units of nanometers, as
+    the conversion from pixels to real space is determined from the qmi metadata.
+    The default is a guess of 600 nm spacing.
     
-    returns: k1, k2
+    A limit may be set to shorten computation for huge lists of images. 
+    
+    :param spacing_guess_nm: (float) Wavelength guess in units of nanometers.
+    :param limit: (int) Only take the first `limit` images into account.
+    :param callback: Report the current status by calling callback(message, i, n).
+    :returns: (k1, k2) Two wave vectors in units of pixels.
     """
     
     # estimated wavelength nm->px
@@ -178,12 +223,17 @@ def findWaveVectorsFromQmiList_new(qmi_list, spacing_guess_nm=600, limit=None, c
 
 def findPhasesFromQmiList_new(qmi_list, k_vec, callback=None):
     """
-    Assuming the image in data contains a plain wave represented by
-    wave vector k_vec, find the phase phi of the plain wave.
-    Phi=0 represents a maximum at the center of the image.
-    A signal amplitude normalized to the data.sum is also given.
+    Convenience function for running :func:`findPhasesFromDataList`
+    on a list of qmi images.
     
-    returns: phi_array, rel_amplitude_array
+    A callback method can be set to keep a user informed about
+    the progress, although only start and end of operation are
+    signalled.
+    
+    :param qmi_list: ([qmi]) List of qmi images to be analyzed.
+    :param k_vec: (ndarray) Wave vector to analyze the phase for.
+    :param callback: Report status by calling callback(message, i, n).
+    :returns: (phi_array, rel_amplitude_array)
     """
     
     # return the result from findWaveVectors
@@ -194,12 +244,24 @@ def findPhasesFromQmiList_new(qmi_list, k_vec, callback=None):
 
 def findPhasesFromQmiList(qmi_list, k_vec, callback=None):
     """
-    Run findPhase on each image in qmi_list and return lists of the results.
-
-    callback: Report the current status by calling callback(message, i, n).
+    .. warning::
     
-    returns: phi_list, amp_list
+        Deprecated, use :func:`findPhasesFromQmiList_new` instead.
+    
+    Convenience function for running :func:`findPhase`
+    on a list of qmi images.
+    
+    Each image in qmi_list is analyzed by :func:`findPhase` and the
+    results are returned as lists. Also, a callback method can be
+    set to keep a user informed about the progress.
+    
+    :param qmi_list: ([qmi]) List of qmi images to be analyzed.
+    :param k_vec: (ndarray) Wave vector to analyze the phase for.
+    :param callback: Report status by calling callback(message, i, n).
+    :returns: (phi_list, amp_list) Phases, relative amplitudes.
     """
+    warnings.warn("findPhasesFromQmiList is deprecated in favor of findPhasesFromQmiList_new")
+    
     phi_list = np.zeros(len(qmi_list), dtype=float)
     amp_list = np.zeros(len(qmi_list), dtype=float)
     # run findPhase for each qmi image
@@ -275,6 +337,16 @@ def filter_correct_sum(data_list, k1, k2, phi1, phi2,
                        rdphi_min = 0,
                        rdphi_max = np.inf,
                        callback=None, noshift=False):
+    """
+    High level function for filtering and correcting lattice images.
+    
+    This is a convenience function using :func:`filter_correct` to filter
+    and correct a list of images and returning the sum of the result
+    afterwards.
+    
+    .. seealso:: :func:`filter_correct` 
+    """    
+    
     # sum = 0
     data_sum = np.zeros(data_list[0].shape, dtype=float)
     # filter and correct data_list
@@ -292,6 +364,29 @@ def filter_correct(data_list, k1, k2, phi1, phi2,
                    rdphi_min = 0,
                    rdphi_max = np.inf,
                    callback=None, noshift=False):
+    """
+    High level function for filtering and correcting lattice images.
+    
+    For a list of images, return a list of corrected images, shifted
+    according to their phases. The list may also be filtered by phases
+    so that only images within a specific phase distance interval
+    [rdphi_min, rdphi_max] from a reference are included in the result.
+    
+    :param data_list: ([ndarray]) List of images to be processed.
+    :param k1: (ndarray) First wave vector.
+    :param k2: (ndarray) Second wave vector.
+    :param phi1: (ndarray) Phases for the first plane wave for each image.
+    :param phi2: (ndarray) Phases for the second plane wave for each image.
+    :param phi1_ref: (float) Reference phase for first plane wave.
+    :param phi2_ref: (float) Reference phase for second plane wave.
+    :param rdphi_min: (float) Minimum difference from reference phase.
+    :param rdphi_max: (float) Maximum difference from reference phase.
+    :param callback: Report the current status by calling callback(message, i, n).
+    :param noshift: (bool) If True, do not shift the images, only filter them.
+    :returns: ([ndimage]) List containing filtered and corrected images.
+    
+    .. seealso:: :func:`filter_correct_sum`
+    """    
     
     # determine phase offsets from reference, shift to [-pi,+pi]
     dphi1 = ((phi1-phi1_ref+np.pi)%(2*np.pi))-np.pi

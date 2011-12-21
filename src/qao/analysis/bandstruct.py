@@ -1,12 +1,17 @@
-###############
-# pyBandstructure
-#
-# uses approximation from Greiner's Phd Thesis
-# to calculate Bandstructure et al. of bosons in an optical lattice
-#
-# 
-################
+"""
+Bandstructure
+--------------------
 
+The :mod:`qao.analysis.bandstruct` module contains functions for solving the hamiltonian of
+a periodic structure, calculating the wannier functions of the system.
+
+.. warning::
+
+    This code is not very well suited for usage as python module, apart
+    from being unmaintained. It may be suitable as a reference implementation
+    for solving bandstructure problems.
+
+"""
 import numpy
 from numpy import linalg
 import pylab as p

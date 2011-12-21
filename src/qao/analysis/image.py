@@ -1,6 +1,55 @@
+"""
+Image
+---------
+
+Provides basic functions for analyzing 2d images.
+
+The functions in this module are designed for general image analysis.
+For specialized functions, i.e. lattice analysis, have a look at the
+other :mod:`qao.analysis` modules as well.
+"""
+
+
 import numpy as np
 
 def imageMoments(data, X = None, Y = None):
+    """Calculate characteristic bivariate moments of an image.  
+    
+    The image is interpreted as 2-dimensional probability distribution, not
+    necessarily normalized to one. If X and Y coordinates are not provided,
+    the coordinates are assumed to be evenly spaced by one pixel.
+    
+    :param data: (ndarray) Image data, a 2d numpy array.
+    :param X: (ndarray) Optional array of x-coordinates.
+    :param Y: (ndarray) Optional array of y-coordinates.  
+    :returns: (dict) Dictionary containing bivariate moments.
+    
+    The following quantities are calculated and returned as dictionary
+
+    =====   ==============================
+    Name    Description
+    =====   ==============================
+    gv      generalized variance
+    b22     bivariate kurtosis
+    rv      relative variance
+    rk      relative kurtosis
+    mx      center x
+    my      center y
+    mu11    central moment (1, 1)
+    mu20    central moment (2, 0)
+    mu02    central moment (0, 2)
+    =====   ==============================
+    
+    An interpretation of the values gv, b22, rv, rk can be found in
+    http://dx.doi.org/10.1088/0026-1394/42/5/003
+    
+    For example, the orientation of a density distribution may be
+    determined from the central moments:
+    
+    .. literalinclude:: ../src/qao/analysis/image.py
+        :pyobject: test_orientation
+    """
+    
     data = np.asfarray(data)
     data = data * (1./data.sum())
     if X == None: X = np.arange(data.shape[1], dtype = float)
@@ -40,30 +89,32 @@ def imageMoments(data, X = None, Y = None):
     # relative univariate kurtosis difference
     rk = abs(ga40 - ga04) / min(ga40, ga04)
     
-    return dict(gv=gv, b22=b22, rv=rv, rk=rk, mu11=mu11, mu20=mu20, mu02=mu02)
+    return dict(gv=gv, b22=b22, rv=rv, rk=rk, mx=mx, my=my,
+                mu11=mu11, mu20=mu20, mu02=mu02)
 
-if __name__ == '__main__':
-    import pylab as p
-    
-    # produce gaussian test distribution
+
+def test_orientation():
+    # gaussian test parameters
     n = 400
-    alpha = 60 * np.pi / 180.
-    sigy, sigx = 5., 50.
+    sx, sy = 50., 10.
     x0, y0 = 200., 200.
-    Y, X = np.ogrid[:400,:400]    
+    alpha  = 51 * np.pi / 180.
+    
+    # calculate distribution
+    Y, X = np.ogrid[:n:1.,:n:1.]    
     Xr = np.sin(alpha) * (Y-y0) + np.cos(alpha) * (X-x0)
     Yr = -np.sin(alpha) * (X-x0) + np.cos(alpha) * (Y-y0) 
-    d = np.exp(- Xr**2 / (2*sigx**2) - Yr**2 / (2*sigy**2))
+    data = np.exp(- Xr**2 / (2*sx**2) - Yr**2 / (2*sy**2))
     
     # measure statistic moments
-    moments = imageMoments(d)
+    moments = imageMoments(data)
     mu11, mu20, mu02 = moments["mu11"], moments["mu20"], moments["mu02"]
     
     # calculate angle from statistic moments
     alpha_m = .5*np.arctan2(2.*mu11, (mu20-mu02))
-    print "measured angle %.1fdeg, (orig %.1fdeg)" % (alpha_m*180./np.pi, alpha*180./np.pi)
-    
-    # show image
-    p.imshow(d)
-    p.show()
+    print "gaussian distribution, with angle %.1fdeg" % (alpha*180./np.pi)
+    print "determined angle %.1fdeg" % (alpha_m*180./np.pi)
+
+if __name__ == '__main__':
+    test_orientation()
     

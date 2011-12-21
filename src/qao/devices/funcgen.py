@@ -1,5 +1,14 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+"""
+Function Generators
+---------------------
+
+This module includes tools for interfacing with Agilent function generators.
+For now the models Agilent33220 and Agilent33500 are supported.
+
+These devices are able to download and store arbitrary wave functions.
+This transfer is implemented as binary transmission and is very efficient
+compared to ASCII transfer of arbitrary functions.
+"""
 
 import socket, numpy, sys
 
