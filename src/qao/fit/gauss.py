@@ -2,7 +2,7 @@ import numpy as np
 import scipy.weave as weave
 from scipy.special import erf
 from scipy.ndimage import rotate
-from fitter import Fitter, DEFAULT_TYPE_C, DEFAULT_TYPE_NPY
+from fitter import LevmarFitter, DEFAULT_TYPE_C, DEFAULT_TYPE_NPY
 
 __compiler_args = ["-O3", "-march=native", "-ffast-math", "-fno-openmp"]
 __linker_args   = ["-fno-openmp"]
@@ -11,9 +11,21 @@ opt_args = {"extra_compile_args": __compiler_args,
 
 DEFAULT_TYPEDEFC = "typedef {0} float_type;\n".format(DEFAULT_TYPE_C)
 
-class Gauss1D(Fitter):
+class Gauss1D(LevmarFitter):
+    r"""
+    Fitter for one-dimensional Gauss functions.
+    
+    The data to be fitted is interpreted as evenly spaced measurements.
+    
+    .. math:: f(x) = A\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma^2}\right] + \text{off}
+    
+    The order of the fit parameters is (A, x_0, s, off). 
+    
+    :param data: (ndarray) Array of measurements.    
+    """
+    
     def __init__(self, data):
-        Fitter.__init__(self, ["A", "x0", "sig", "off"], data)
+        LevmarFitter.__init__(self, ["A", "x_0", "s", "off"], data)
 
         cache_z = np.empty_like(self._f)
         cache_e = np.empty_like(self._f)
@@ -78,10 +90,22 @@ class Gauss1D(Fitter):
         p = pars
         weave.inline(self.fJ_code, ["f", "J", "cache_z", "cache_e", "p"], **opt_args)
 
-class Gauss2D(Fitter):
+class Gauss2D(LevmarFitter):
+    r"""
+    Fitter for two-dimensional axis aligned Gauss functions.
     
+    The data to be fitted is interpreted as rectangular image,
+    given by a 2d-ndarray. The Gauss function is aligned to the x and y axis.
+    
+    .. math:: f(x, y) = A\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma_x^2}-\frac{(y-y_0)^2}{2 \sigma_y^2}\right] + \text{off}
+    
+    The order of the fit parameters is (A, x_0, s_x, y_0, s_y, off). 
+    
+    :param data: (ndarray) Image to be fitted.
+    """
+        
     def __init__(self, data):
-        Fitter.__init__(self, ["A", "x_0", "s_x", "y_0", "s_y", "off"], data)
+        LevmarFitter.__init__(self, ["A", "x_0", "s_x", "y_0", "s_y", "off"], data)
 
         cache_ex = np.empty(data.shape[1], dtype=float)
         cache_ey = np.empty(data.shape[0], dtype=float)
@@ -187,10 +211,28 @@ class Gauss2D(Fitter):
         weave.inline(self.fJ_code, ["f", "J", "cache_ex", "cache_ey", "p"], **opt_args)
 
 
-class Gauss2DRot(Fitter):
+class Gauss2DRot(LevmarFitter):
+    r"""
+    Fitter for two-dimensional rotated Gauss functions.
+    
+    The data to be fitted is interpreted as rectangular image,
+    given by a 2d-ndarray. The Gauss function is rotated by an angle to be fitted.
+    
+    .. math::
+    
+        x' = (x-x_0)\cdot\cos(\alpha) + (y-y_0)\cdot\sin(\alpha)
+        
+        y' = (y-y_0)\cdot\cos(\alpha) - (x-x_0)\cdot\sin(\alpha)
+        
+        f(x, y) = A\cdot\exp\left[-\frac{{x'}^2}{2 \sigma_x^2}-\frac{{y'}^2}{2 \sigma_y^2}\right] + \text{off}
+    
+    The order of the fit parameters is (A, x_0, s_x, y_0, s_y, alpha, off). 
+    
+    :param data: (ndarray) Image to be fitted.
+    """
     
     def __init__(self, data):
-        Fitter.__init__(self, ["A", "x_0", "s_x", "y_0", "s_y", "alpha", "off"], data)
+        LevmarFitter.__init__(self, ["A", "x_0", "s_x", "y_0", "s_y", "alpha", "off"], data)
     
     def guess(self):
         # fit projection to x and y direction
@@ -344,6 +386,9 @@ if __name__ == "__main__":
     data_ini = gauss2drot(X, Y, pars_ini)
     pars_fit = fitter.fit(pars_ini)
     data_fit = gauss2drot(X, Y, pars_fit)
+    
+    print pars_fit
+    print fitter.getFitParsDict()
     
     import pylab as p
     p.subplot(1,3,1)

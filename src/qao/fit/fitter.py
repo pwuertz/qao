@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.stats
 
 ##########################################################################
 
@@ -9,15 +10,94 @@ DELTA_ABS = 1.5e-8
 DEFAULT_TYPE_NPY = np.double
 DEFAULT_TYPE_C = "double"
 
-class Fitter(object):
+class LevmarFitter(object):
     """
-    Base class for fitting data.
-    Fitter should be subclassed for new fit model functions.
+    Base fitter class implementing the Levenberg-Marquardt non-linear least squares algorithm.
+    
+    **Using fitters**
+    
+    Since all fitters are derived from this base class, the behavior is the same. You create
+    an instance of a fitter for a specific dataset, run the :func:`fit` method, and retrieve
+    the results using :func:`getFitPars`, :func:`getFitErr` and :func:`getFitData`.
+    
+    When processing multiple datasets, each having the same dimensions, you can reuse a fitter
+    by setting new data using the :func:`setData` method.
+    
+    **Writing new fitters**
+    
+    The :class:`LevmarFitter` class must be subclassed for new fit model functions. For each
+    new fitting class, you must provide the names for the fitting parameters and implement the
+    methods calculating the fit model and guessing initial parameters.
+        
+    First, you reimplement the :func:`__init__` method and provide the names for the fit parameters
+    as simple list of strings when calling the parent constructor. This also determines the
+    number of parameters at this point. The data argument is normally passed on to the parent
+    constructor and determines the space to be allocated for computations.
+    
+    Second, you implement the methods :func:`f` and/or :func:`fJ`.
+    The first function computes your function values for a given set of fit parameters,
+    the second computes the function values and the jacobian. If only :func:`f` is given,
+    the jacobian is approximated during the fit process, and you do not need to implement
+    :func:`fJ`. If your implement :func:`fJ`, :func:`f` is not used by the fitter and you can
+    expect a significant increase in performance, as you can optimize simultaneous calculation
+    of f and J. Please refer to the method documentation for further implementation details.
+    
+    Third, you implement the :func:`guess` method. For implementation details, see method
+    documentation.
+
+    .. note::
+    
+        The constants `DEFAULT_TYPE_NPY` and `DEFAULT_TYPE_C` from :mod:`qao.fit.fitter` should be
+        used to abstract the floating type for changing the precision if desired.
     
     :param par_names: (list) List of fit parameter names.
     :param data: (ndarray) Data to be fitted.
+    
+    This is a simple example subclass that implements a 1d gaussian
+    fitter including a guess method::
+        
+        from qao.fit.fitter import LevmarFitter, DEFAULT_TYPE_NPY
+        
+        class GaussFitter(LevmarFitter):
+            def __init__(self, data):
+                LevmarFitter.__init__(self, ["A", "x0", "sigma"], data)
+            
+            def guess(self):
+                # determine maximum value
+                data = self.data
+                amp  = np.max(data)
+                # calculate mean and variance
+                dsum = np.sum(data)
+                x0  = (np.arange(data.size) * data).sum() * (1./dsum)
+                var = ((np.arange(data.size)-x0)**2 * data).sum() * (1./dsum)
+                # return guess
+                return np.asfarray([dmax, x0, np.sqrt(var)], dtype = DEFAULT_TYPE_NPY)
+            
+            def f(self, pars):
+                # for given set of pars, calculate the fit function
+                A, x0, sig = pars
+                x = np.arange(data.size, dtype = DEFAULT_TYPE_NPY)
+                self._f[:] = A * np.exp(-1./2. * 1./sig**2 * (x-x0)**2)
+            
+            def fJ(self, pars):
+                # for given set of pars, calculate the fit function...
+                A, x0, sig = pars
+                x = np.arange(data.size, dtype = DEFAULT_TYPE_NPY)
+                self._f[:] = A * np.exp(-1./2. * 1./sig**2 * (x-x0)**2)
+                
+                # ...and the derivatives for the jacobian 
+                self._J[0, :] = 1./A * self._f[:]
+                self._J[1, :] = (x-x0)/sig**2 * self._f[:]
+                self._J[2, :] = (x-x0)**2/sig**3 * self._f[:]                
     """
     def __init__(self, pars_name, data):
+        """
+        Provide parameter names and data for fitting. This will determine the
+        amount of space allocated for computations and is not to be changed later.
+        
+        :param par_names: (list) List of fit parameter names.
+        :param data: (ndarray) Data to be fitted.
+        """
         self.pars_name = pars_name
         self.pars_fit = np.zeros(len(pars_name), dtype = DEFAULT_TYPE_NPY)
         self.data = np.asfarray(data, dtype = DEFAULT_TYPE_NPY)
@@ -26,24 +106,48 @@ class Fitter(object):
         
         self.verbose = False
     
+    def setVerbose(self, verbose):
+        """
+        Set fitter to verbose output. This will print the internal status for
+        each iteration step.
+        
+        :param verbose: (bool) Enable/disable verbose output when fitting.
+        """
+        self.verbose = bool(verbose)
+    
     def setData(self, data):
         """
-        Change the data to be fitted. The shape of data must not change.
+        Change the data to be fitted. The shape of the data must not change. For
+        fitting a dataset with different shape you need to create a new fitter
+        instance.
+        
+        :param data: (ndarray) New data to be fitted.
         """
         data = np.asfarray(data, dtype = DEFAULT_TYPE_NPY)
         if self.data.shape != data.shape:
             raise ValueError("Shape mismatch. Expected dimensions %s." % self.data.shape) 
         self.data = data
     
-    def fit(self, pars_guess = None):
+    def fit(self, pars_guess = None, tau = 1e-2, eps1 = 1e-6, eps2 = 1e-6, kmax = 50):
         """
-        Run a fit to the given data.
-        :param par_guess: (ndarray) Start parameters for fitting. If None, guess from data.  
+        Fit the data currently assigned to the fitter.
+        
+        If the fitting class implemented a guess function, you do not need to provide
+        a initial guess of fit parameters. After completion, the best fit parameters
+        are stored and returned. You can obtain the parameters using the methods
+        :func:`getFitPars` and :func:`getFitDict` as well. Fitting details like the
+        number of iterations and reason for stopping can be retrieved
+        from :func:`getFitLog`.
+        
+        :param pars_guess: (ndarray) Start parameters for fitting. If None, guess from data.  
         """
         if pars_guess is None:
             pars_guess = self.guess()
         
-        pars_fit = self.__LM(pars_guess, verbose = self.verbose)
+        if len(pars_guess) != len(self.pars_name):
+            raise ValueError("Invalid number of guess parameters.")
+        
+        pars_fit = self.__LM(pars_guess, tau, eps1, eps2, kmax, verbose = self.verbose)
         self.pars_fit[:] = pars_fit[:]
         return pars_fit
     
@@ -131,37 +235,172 @@ class Fitter(object):
         self.fit_log = {"iter": k, "reason": reason}
         
         return pars
+
+    def __estError(self, pars):
+        """
+        Calculate the estimated errors for best fit parameters.
+        """
+        self.fJ(pars)  # refresh f and J
+        if self.data is not None: self._f -= self.data.ravel()
+        
+        alpha = 0.05            # 95%, 2sigma confidence limit
+        N = self._f.size        # number of points
+        m = len(pars)  # number of parameters
+        
+        errsq = np.linalg.norm(self._f)**2 # sum square residuum
+        sigma = np.sqrt(errsq / (N - m))   # estimated standard deviation
+            
+        diag = np.diagonal(np.linalg.inv(np.inner(self._J, self._J)))
+        pars_err = np.sqrt(diag) * sigma * scipy.stats.t.ppf(1 - alpha / 2, N - m);
+    
+        return pars_err
     
     def guess(self):
         """
         Determine a guess of fit parameters for given data.
+        
+        A good estimate of initial fit parameters is crucial for the fitting process.
+        When subclassing, implement a method for guessing fit parameters for a given
+        set of measurements `self.data`. Return set of parameters as defined in your
+        implementation.
+        
+        :returns: (ndarray) Fit parameters guessed from data.
         """
         raise NotImplementedError("Fitter must be subclassed")
     
     def f(self, pars):
         """
         Calculate the model function for given parameters.
+        
+        .. note::
+        
+            This function is usually not called
+            from the user directly.
+        
+        The function values are to be stored in the already allocated
+        ndarray `self._f`. The array's size matches the size of `self.data`
+        provided when instancing the fitter, although it is flattened.
+        If the shape of data is (height, width) the shape of `self._f` is
+        height*width.
+        
+        Implementing this function is not necessary if :func:`fJ` is
+        already implemented.
+
         :param pars: (ndarray) Fit parameters.
         """
     
     def fJ(self, pars):
         """
         Calculate the model function and the jacobian for given parameters.
+        
+        .. note::
+        
+            This function is usually not called
+            from the user directly.
+       
+        The function values are to be stored in the already allocated
+        ndarrays `self._f` and `self._J`. If the number of fit
+        parameters is `k` and the number of data points is `n`,
+        the shape of `self._f` is (n,) and the shape of `self._J`
+        is(k, n). The first row of the jacobian holds all points of
+        the function derived by the first fit parameter, the n'th row
+        the derivative of the n'th fit parameter.
+        
+        If you can not or do not want to implement this function you
+        may implement :func:`f` instead, and the jacobian will be
+        approximated.
+
         :param pars: (ndarray) Fit parameters.
         """
+    
         self.__JACapprox(pars)
         self.f(pars)
+    
+    def getFitParNames(self):
+        """
+        Return the names of the fit parameters.
+        
+        :returns: ([str]) List of strings containing the parameter names.
+        """
+        return self.pars_name
     
     def getFitPars(self):
         """
         Return the best fit parameter values as array.
+        
+        The order of the parameters is determined by the implementation
+        and fixed. If you do not know the order, refer to :func:`getFitParsDict`
+        or :func:`getFitParNames`.
+        
+        :returns: (ndarray) Best fit parameters.
         """
         return self.pars_fit
     
-    def getFitDict(self):
+    def getFitErr(self):
+        """
+        Return the estimated errors of the best fit parameters.
+        
+        The order of the errors matches the order of the parameters
+        ans is determined by the implementation. If you do not know
+        the order, refer to :func:`getFitParsDict` or
+        :func:`getFitParNames`.
+        
+        :returns: (ndarray) Best fit parameters.
+        """
+        return self.__estError(self.pars_fit)        
+    
+    def getFitParsDict(self):
         """
         Return the best fit parameters as dictionary.
+        
+        The dictionary will contain the names of the fit
+        parameters, their estimated best fit values and
+        the estimated error of the parameter.
+                         
+        :returns: (dict) Best fit parameters.
         """
-        return dict(zip(self.pars_name, self.pars_fit))
-
+        pars_err = self.getFitErr()
+        
+        result = dict()
+        for i, name in enumerate(self.pars_name):
+            result[name] = self.pars_fit[i]
+            result[name+"_err"] = pars_err[i]
+        
+        return result
     
+    def getFitLog(self):
+        """
+        Return details from the fitting iteration. The result
+        is a dictionary including the following information:
+        
+        =======   ==============================
+        Name      Description
+        =======   ==============================
+        iter      Number of iterations.
+        reason    Reason for stopping the fit ("small gradient", "small step", "singular matrix").
+        =======   ==============================
+        
+        :returns: (dict) Fit procedure details.
+        """
+        return self.fit_log
+    
+    def getFitData(self, pars = None):
+        """
+        Calculate and return the data from the fitting function.
+        
+        If `pars` is None, return the data of the best fit function
+        determined from the last successful fit run. You can also
+        use this function to calculate the fit function for any
+        other set of parameters if provided.
+        
+        :param pars: (ndarray) Fit function parameters or None. 
+        :returns: (ndarray) Fit function data.
+        """
+        # return a reshaped copy of f(pars)
+        if pars is None:
+            pars = self.pars_fit
+        if len(pars) != len(self.pars_name):
+            raise ValueError("Invalid number of guess parameters.")
+        pars = np.asfarray(pars, dtype = DEFAULT_TYPE_NPY)
+        self.fJ(pars)
+        return self._f.copy().reshape(self.data.shape)
