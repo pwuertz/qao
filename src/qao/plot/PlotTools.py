@@ -1,3 +1,10 @@
+"""
+
+The module :mod:`qao.plot.PlotTools` is deprecated and
+should not be used anymore. Most functions are merged to
+:mod:`qao.plot.image`.
+"""
+
 from PyQt4 import QtCore, QtGui
 import pylab as p
 import numpy
