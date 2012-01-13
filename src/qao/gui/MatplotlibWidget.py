@@ -6,6 +6,7 @@ Matplotlib Widget
 """
 
 import numpy as np
+from scipy import weave
 from PyQt4 import QtGui
 
 # mpl stuff
@@ -149,7 +150,9 @@ class MatplotlibWidget(QtGui.QWidget):
             ax.relim()
             ax.autoscale()
 
-if __name__ == "__main__":
+##########################################################################
+
+def testMatplotlibWidget():
     app = QtGui.QApplication([])
     palette = app.palette()
     palette.setColor(QtGui.QPalette.ToolTipBase, QtGui.QColor("black"))
@@ -170,6 +173,7 @@ if __name__ == "__main__":
     win.setXLabel("x axis")
     win.draw()
 
-
     app.exec_()
-    
+
+if __name__ == "__main__":
+    testMatplotlibWidget()
