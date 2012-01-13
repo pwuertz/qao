@@ -17,6 +17,44 @@ from matplotlib.figure import Figure
 from qao.utils import unique_mean
 
 class MatplotlibWidget(QtGui.QWidget):
+    """
+    MatplotlibWidget is a plotting widget based on matplotlib.
+    
+    While the FigureCanvasQTAgg widget provided by matplotlib itself is
+    intended for easy matplotlib integration in Qt applications, this
+    widget focuses on hiding matplotlib internals from the user and
+    adding new features.
+    
+    As the widget is designed to be used within applications,
+    MatplotlibWidget provides methods for updating the data of
+    graphs without clearing the figure and setting it up from scratch.
+    This optimizes performance when the data is changed frequently.
+    
+    After creating a MatplotlibWidget, you add a new plots to the
+    figure by calling :func:`addGroupedPlot`. A new feature is the
+    use of so called `plot groups`. When calling :func:`newPlotGroup`,
+    all subsequent calls to :func:`addGroupedPlot` will add new plots
+    to a different group, which will change the appearance of the
+    plots. The plot will be updated when calling :func:`draw`.
+    
+    All plots within a group will have the same color but different
+    line styles. Each group however will differ in color. You can
+    choose a split presentation, where each group will be displayed
+    in its own graph.
+    
+    You can use :func:`updateGroupedPlot` for changing the plot-data,
+    or :func:`clearPlots` for clearing the whole figure and setting
+    it up from scratch.
+    
+    :param parent: Parent parameter of QWidget, usually None.
+    :param autoscaleBn: (bool) Add autoscale button to panel.
+    
+    Example:
+    
+    .. literalinclude:: ../src/qao/gui/MatplotlibWidget.py
+        :pyobject: testMatplotlibWidget
+    """
+    
     colors = 'bgrkcm'
     markers = 'os^vd'
     linestyles = ['-', '--', '-.', ':']
@@ -53,6 +91,9 @@ class MatplotlibWidget(QtGui.QWidget):
         self.setGropPlotStyle("combined")
     
     def clearPlots(self):
+        """
+        Removes all plots from the figure and deletes all plot groups.
+        """
         self.plotPointGroups = []
         self.plotLineGroups = []
         self._needSetupFigure = True
@@ -62,12 +103,38 @@ class MatplotlibWidget(QtGui.QWidget):
         self.fig.subplots_adjust(left = 30./w, right = 1-5./w, top = 1-5./h, bottom = 50./h, hspace = 70./h)
         
     def newPlotGroup(self):
+        """
+        Creates a new group for further plots added to the figure.
+        
+        Plots within a group have different line styles. Plots of different
+        groups will receive different colors. In the split presentation, each
+        plot group will be displayed in its own graph.
+        
+        :returns: (int) Group id assigned for updating plots later on.
+        """
         assert len(self.plotPointGroups) < len(self.colors), "maximum number of plot groups reached"
         self.plotPointGroups.append([])
         self.plotLineGroups.append([])
         self._needSetupFigure = True
+        
+        return len(self.plotLineGroups) - 1
 
     def addGroupedPlot(self, label, x, y):
+        """
+        Creates a new plot within the last created plot group.
+        
+        Generally, this function creates two plots for a given dataset.
+        The first plot is a scatter plot, showing all x and y values.
+        The second plot is a line plot, averaging over y values if there
+        are multiple occurrences of x values.
+        
+        The plot data can be updated by calling :func:`updateGroupedPlot`. 
+        
+        :param label: (str) Label to be displayed in the figure legend.
+        :param x: (ndarray) Array or list of x values.
+        :param y: (ndarray) Array or list of y values.
+        :returns: (int) Plot id assigned for updating plots later on.
+        """
         if not self.plotPointGroups: self.newPlotGroup()
         assert len(self.plotPointGroups[-1]) < len(self.linestyles), "maximum number of plot group elements reached"
         pointGroup = self.plotPointGroups[-1]
@@ -81,12 +148,26 @@ class MatplotlibWidget(QtGui.QWidget):
                                        ls = self.linestyles[len(lineGroup)])
         pointGroup.append(points)
         lineGroup.append(line)
-        print points, line
         self._needSetupLines = True
+        
+        return len(lineGroup) - 1
     
-    def updateGroupedPlot(self, group, item, x, y):
-        line   = self.lineGroup[group][item]
-        points = self.pointGroup[group][item]
+    def updateGroupedPlot(self, group, plot, x, y):
+        """
+        Update the data for a single plot.
+        
+        The plot you want to update is defined by the group and plot
+        id. Both numbers are starting at zero and simply increment when
+        new groups/plots are added by the user, so the second plot within
+        the first group is (group=0, plot=1).
+        
+        :param group: (int) Group id of the plot.
+        :param plot: (int) Plot id of the plot.
+        :param x: (ndarray) New x values for plotting.
+        :param y: (ndarray) New y values for plotting.
+        """
+        line   = self.plotLineGroups[group][plot]
+        points = self.plotPointGroups[group][plot]
         xu, yu = unique_mean(x, y)
         line.set_xdata(xu)
         line.set_ydata(yu)
@@ -96,7 +177,13 @@ class MatplotlibWidget(QtGui.QWidget):
     
     def setGropPlotStyle(self, style = "combined"):
         """
-        style may be 'combined' or 'individual'
+        Change the presentation style regarding the plot groups.
+        
+        The default behavior is a combined presentation, where
+        all plots are displayed in the same graph. The split
+        view assignes one graph for each plot group.
+        
+        :param style: (str) Plot style, may be 'combined' or 'individual'.
         """
         if style == "combined":
             self.actionGroupPlotStyle.setChecked(False)
@@ -111,6 +198,14 @@ class MatplotlibWidget(QtGui.QWidget):
         self._needSetupFigure = True
     
     def toggleGroupPlotStyle(self):
+        """
+        Convenience function for changing the plot style.
+        
+        If the currently active style is 'combined', the
+        style will chance to 'individual' and vice versa.
+        
+        .. seealso:: :func:`setGropPlotStyle`
+        """
         if self.groupPlotStyle == "combined":
             self.setGropPlotStyle("individual")
         else:
@@ -121,9 +216,20 @@ class MatplotlibWidget(QtGui.QWidget):
         self.draw() 
     
     def setXLabel(self, label):
+        """
+        Change the label for the x-axis.
+        
+        :param label: (str) Text displayed under x-axis.
+        """
         self.xlabel = label
     
     def draw(self):
+        """
+        Redraw the current figure.
+        
+        Changes to the plot data, labels etc. will be visible
+        after calling this method.
+        """
         if self._needSetupFigure: self._setupFigure()
         if self._needSetupLines: self._setupLines()
         if self._needRescale: self._setupScale()
@@ -171,10 +277,6 @@ class MatplotlibWidget(QtGui.QWidget):
 
 def testMatplotlibWidget():
     app = QtGui.QApplication([])
-    palette = app.palette()
-    palette.setColor(QtGui.QPalette.ToolTipBase, QtGui.QColor("black"))
-    palette.setColor(QtGui.QPalette.ToolTipText, QtGui.QColor("white"))
-    app.setPalette(palette)
     
     win = MatplotlibWidget()
     win.show()
@@ -183,10 +285,10 @@ def testMatplotlibWidget():
     win.setGropPlotStyle("combined")
     win.newPlotGroup()
     win.addGroupedPlot("one, 1st", x, y)
-    win.addGroupedPlot("one, 2nd", x, y-2)
+    win.addGroupedPlot("one, 2nd", x, y-15)
     win.newPlotGroup()
     win.addGroupedPlot("two, 1st", -x, y)
-    win.addGroupedPlot("two, 2nd", -x, y-2)
+    win.addGroupedPlot("two, 2nd", -x, y-15)
     win.setXLabel("x axis")
     win.draw()
 
