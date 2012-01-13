@@ -6,7 +6,6 @@ Matplotlib Widget
 """
 
 import numpy as np
-from scipy import weave
 from PyQt4 import QtGui
 
 # mpl stuff
@@ -14,6 +13,8 @@ import matplotlib
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 from matplotlib.figure import Figure
+
+from qao.utils import unique_mean
 
 class MatplotlibWidget(QtGui.QWidget):
     colors = 'bgrkcm'
@@ -52,7 +53,8 @@ class MatplotlibWidget(QtGui.QWidget):
         self.setGropPlotStyle("combined")
     
     def clearPlots(self):
-        self.plotGroups = []
+        self.plotPointGroups = []
+        self.plotLineGroups = []
         self._needSetupFigure = True
     
     def resizeEvent(self, event):
@@ -60,24 +62,36 @@ class MatplotlibWidget(QtGui.QWidget):
         self.fig.subplots_adjust(left = 30./w, right = 1-5./w, top = 1-5./h, bottom = 50./h, hspace = 70./h)
         
     def newPlotGroup(self):
-        assert len(self.plotGroups) < len(self.colors)
-        self.plotGroups.append([])
+        assert len(self.plotPointGroups) < len(self.colors), "maximum number of plot groups reached"
+        self.plotPointGroups.append([])
+        self.plotLineGroups.append([])
         self._needSetupFigure = True
 
     def addGroupedPlot(self, label, x, y):
-        if not self.plotGroups: self.newPlotGroup()
-        assert len(self.plotGroups[-1]) < len(self.linestyles)
-        lineGroup = self.plotGroups[-1]
-        line = matplotlib.lines.Line2D(x, y, label = label,
-                                       color = self.colors[len(self.plotGroups)-1],
+        if not self.plotPointGroups: self.newPlotGroup()
+        assert len(self.plotPointGroups[-1]) < len(self.linestyles), "maximum number of plot group elements reached"
+        pointGroup = self.plotPointGroups[-1]
+        lineGroup  = self.plotLineGroups[-1]
+        xu, yu = unique_mean(x, y)
+        points = matplotlib.lines.Line2D(x, y,
+                                       color = self.colors[len(self.plotPointGroups)-1],
+                                       marker = "o", ls = "")
+        line = matplotlib.lines.Line2D(xu, yu, label = label,
+                                       color = self.colors[len(self.plotLineGroups)-1],
                                        ls = self.linestyles[len(lineGroup)])
+        pointGroup.append(points)
         lineGroup.append(line)
+        print points, line
         self._needSetupLines = True
     
     def updateGroupedPlot(self, group, item, x, y):
-        line = self.plotGroups[group][item]
-        line.set_xdata(x)
-        line.set_ydata(y)
+        line   = self.lineGroup[group][item]
+        points = self.pointGroup[group][item]
+        xu, yu = unique_mean(x, y)
+        line.set_xdata(xu)
+        line.set_ydata(yu)
+        points.set_xdata(x)
+        points.set_ydata(y)
         self._needRescale = True
     
     def setGropPlotStyle(self, style = "combined"):
@@ -119,7 +133,7 @@ class MatplotlibWidget(QtGui.QWidget):
         self._needSetupFigure = False
         # clear figure and setup axes for plot groups
         self.fig.clf()
-        nGroups = len(self.plotGroups)
+        nGroups = len(self.plotLineGroups)
         if not nGroups: return
         if self.groupPlotStyle == "combined":
             self.axes = [self.fig.add_subplot(1,1,1)] * nGroups
@@ -136,10 +150,13 @@ class MatplotlibWidget(QtGui.QWidget):
         # clear lines from axes
         for ax in self.axes: ax.lines = []
         # every group of lines is plotted to one axes
-        for ax, lines in zip(self.axes, self.plotGroups):
+        for ax, pointlines, lines in zip(self.axes, self.plotPointGroups, self.plotLineGroups):
             for line in lines:
                 ax.add_line(line)
                 line.set_transform(ax.transData)
+            for points in pointlines:
+                ax.add_line(points)
+                points.set_transform(ax.transData)
             ax.autoscale_view()
             ax.legend(loc=0)
     

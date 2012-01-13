@@ -168,6 +168,7 @@ def unique_mean(xdata, *ydatas):
     """
     # make sure we are using floats
     xdata_unique, indices_inverse = np.unique(xdata, return_inverse=True)
+    ydatas = [np.asfarray(ydata) for ydata in ydatas]
 
     norm = 1. / np.bincount(indices_inverse) 
     ydatas_unique = [norm*np.bincount(indices_inverse, weights=ydata) for ydata in ydatas]  
