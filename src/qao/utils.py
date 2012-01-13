@@ -136,16 +136,43 @@ def findMostFrequent(data):
         >>> findMostFrequent(data)
         (1, 3)
     """
-    
-    if not isinstance(data, np.ndarray):
-        try:
-            data = np.array(data)
-        except:
-            print "Error converting data to numpy array"
+    data = np.asarray(data)
     elements = np.unique(data)
-    haufigkeit = [(data==i).sum() for i in elements]
-    index = haufigkeit.index(max(haufigkeit))
-    return (elements[index],max(haufigkeit))
+    bincount = [(data==i).sum() for i in elements]
+    index = bincount.index(max(bincount))
+    return (elements[index],max(bincount))
+
+def unique_mean(xdata, *ydatas):
+    """
+    Sort `xdata` and return only unique elements. Calculate the average
+    of values in `ydata` for multiple occurrences of values in `xdata`.
+    
+    This is particulary useful for arranging data for analysis and plotting,
+    since multiple occurrences of values in `xdata` can be interpreted as
+    multiple measurements of the same data point, which you might want to
+    average.
+    
+    :param xdata: (ndarray) x-values
+    :param ydatas: (ndarray) multiple arrays of y-values
+    :returns:
+        * **xdata_unique** - unique, sorted x-values
+        * **ydata_unique** - y-values matching the x-values output
+    
+    Example::
+        
+        >>> xdata  = [1, 2, 5, 2]
+        >>> ydata1 = [9, 8, 7, 8]
+        >>> ydata2 = [0, 2, 3, 4]
+        >>> arrangePlotData(xdata, ydata)
+        (array([1, 2, 5]), array([ 9.,  8.,  7.]), array([ 0.,  3.,  3.]))
+    """
+    # make sure we are using floats
+    xdata_unique, indices_inverse = np.unique(xdata, return_inverse=True)
+
+    norm = 1. / np.bincount(indices_inverse) 
+    ydatas_unique = [norm*np.bincount(indices_inverse, weights=ydata) for ydata in ydatas]  
+    
+    return tuple([xdata_unique] + ydatas_unique)
 
 def add(array1, array2):
     """
