@@ -210,7 +210,7 @@ def findWaveVectorsFromQmiList_new(qmi_list, spacing_guess_nm=600, limit=None, c
     """
     
     # estimated wavelength nm->px
-    nm_per_px = float(qmi_list[0].image_parameters["PixelDistanceX"])
+    nm_per_px = float(qmi_list[0].image_parameters["psize_nm"])
     length_guess_px = float(spacing_guess_nm) / nm_per_px
         
     # return the result from findWaveVectors
