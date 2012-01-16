@@ -199,13 +199,13 @@ def updateQImage(qimage, data, vmin = None, vmax = None, cmap = cmap_wjet):
 def buildExt(compiler='', verbose=1, optimize=True):
     # type definitions
     data = np.zeros([2,2], dtype=np.double)
-    vmin = 0.; vmax = 1.
-    r_map   = np.zeros(2, dtype=np.double)
-    g_map   = np.zeros(2, dtype=np.double)
-    b_map   = np.zeros(2, dtype=np.double)
-    rgbdata = np.empty(data.size*4, dtype=np.uint8)
+    vmin = 0.; vmax = 1. #@UnusedVariable
+    r_map   = np.zeros(2, dtype=np.double) #@UnusedVariable
+    g_map   = np.zeros(2, dtype=np.double) #@UnusedVariable
+    b_map   = np.zeros(2, dtype=np.double) #@UnusedVariable
+    rgbdata = np.empty(data.size*4, dtype=np.uint8) #@UnusedVariable
     qimage  = QtGui.QImage(data.shape[1], data.shape[0], QtGui.QImage.Format_RGB32)
-    rgbdata_cobject = qimage.bits().ascobject()
+    rgbdata_cobject = qimage.bits().ascobject() #@UnusedVariable
     
     # build extension
     mod = weave.ext_tools.ext_module("ext_image", compiler)
@@ -223,12 +223,12 @@ def buildExt(compiler='', verbose=1, optimize=True):
 # try to determine if this system can compile code, if not, try to load a precompiled extension
 try:
     cmapping_ndarray_inline(np.empty([1,1], dtype=float), np.empty(4, dtype=np.uint8), 0, 1, cmap_wjet["r_map"], cmap_wjet["g_map"], cmap_wjet["b_map"])
-    cmapping_ndarray = cmapping_ndarray_inline
+    cmapping_ndarray = cmapping_ndarray_inline #@UnusedVariable
     cmapping_cobject = cmapping_cobject_inline
 except:
     print "cannot compile inline"
     try:
-        from ext_image import cmapping_ndarray, cmapping_cobject
+        from ext_image import cmapping_ndarray, cmapping_cobject #@UnresolvedImport @UnusedImport
     except:
         raise Exception("precompiled ext not found, compile using buildExt")
 
