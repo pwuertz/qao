@@ -3,7 +3,7 @@ Utility functions
 =================
 """
 
-import os, bz2
+import bz2
 import numpy as np
 from PyQt4 import QtCore, QtGui
 from scipy import ndimage
@@ -313,7 +313,7 @@ def parab_interpolation(data, xi, yi):
     """
     
     # get the maximum and the 4 neighbouring points 
-    z1, z2, z3 = data[yi-1:yi+2,xi]
+    z1, z2, z3 = data[yi-1:yi+2,xi] #@UnusedVariable
     z4, z2, z5 = data[yi,xi-1:xi+2]
     
     # parabolic interpolation at point (xi, yi)
@@ -355,5 +355,5 @@ def rotate(data, degrees):
     return ndimage.rotate(data, degrees)
 
 if __name__ == "__main__":
-  import doctest
-  doctest.testmod(verbose=True)
+    import doctest
+    doctest.testmod(verbose=True)
