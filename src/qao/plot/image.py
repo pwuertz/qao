@@ -1,3 +1,28 @@
+"""
+Image plotting
+=================
+
+This module provides functions for creating rgb-color mapped
+images from raw data. These functions are optimized for speed
+and very useful when developing responsive applications.
+
+The data is provided as ndarray and can be converted to rgb
+ndarrays for general use or directly to QImage objects for
+application support and file output. The colormap used
+during the conversion is given by a dictionary containing
+three arrays named *r_map*, *g_map* and *b_map*. They define
+the number of stops in the data-range 0.0 to 1.0 and the
+corresponging color-value.
+
+A few color-maps are already provided by this module:
+
+* **cmap_jet** - Well known blue-to-red map
+* **cmap_wjet** - Version of jet using white as starting color
+* **cmap_hot** - Black-red-yellow/white colormap
+* **cmap_gray** - Simple grayscale map
+
+"""
+
 import numpy as np
 from scipy import weave
 from PyQt4 import QtGui
@@ -60,10 +85,15 @@ def __checkTypes(data, vmin, vmax):
     data = np.ascontiguousarray(data, dtype=np.double)
     assert data.ndim == 2, "invalid number of dimensions"
     # vmin and vmax must be double, determine values if necessary
-    if vmin == None: vmin = float(data.min())
-    else: vmin = float(vmin)
-    if vmax == None: vmax = float(data.max())
-    else: vmax = float(vmax)
+    print vmin
+    if vmin is None:
+        vmin = float(data.min())
+    else:
+        vmin = float(vmin)
+    if vmax is None:
+        vmax = float(data.max())
+    else:
+        vmax = float(vmax)
     return data, vmin, vmax
 
 def cmapping_ndarray_inline(data, rgbdata, vmin, vmax, r_map, g_map, b_map):
@@ -75,7 +105,29 @@ def cmapping_cobject_inline(data, rgbdata_cobject, vmin, vmax, r_map, g_map, b_m
                  extra_compile_args = [__compiler_args], extra_link_args = [__linker_args])
 
 def createRGB(data, vmin = None, vmax = None, cmap = cmap_wjet):
-    "create rgb data from data array using the given colormap"
+    """
+    Create RGB values from data using a color-map.
+
+    The minimum and maximum value for scaling the colormap is
+    determined from `data` unless specified by `vmin` and `vmax`.
+    The output array's shape will be (height, width, 4),
+    containing the rgb values for each pixel. 
+    
+    :param data: (ndarray) Array containing the data values.
+    :param vmin: (float) Minimum data value or None.
+    :param vmax: (float) Maximum data value or None.
+    :param cmap: (dict) Colormap for converting the data.
+    :returns: (ndarray) Array containing RGB data.
+    
+    Example::
+        
+        import numpy as np
+        import pylab as p
+        from qao.plot.image import createRGB, cmap_hot
+        
+        data = np.random.rand(200, 200)
+        data_rgb = createRGB(data, cmap = cmap_hot)
+    """
     data, vmin, vmax = __checkTypes(data, vmin, vmax)
     # create rgb values from data
     rgbdata = np.empty([data.shape[0], data.shape[1], 4], dtype=np.uint8)
@@ -83,7 +135,29 @@ def createRGB(data, vmin = None, vmax = None, cmap = cmap_wjet):
     return rgbdata
 
 def createQImage(data, vmin = None, vmax = None, cmap = cmap_wjet):
-    "create QImage from data array using the given colormap"
+    """
+    Create QImage from data array using a color-map.
+
+    The minimum and maximum value for scaling the colormap is
+    determined from `data` unless specified by `vmin` and `vmax`.
+    The output will be a 24bit RGB QImage that can be used within
+    graphical user applications or saved to files. 
+    
+    :param data: (ndarray) Array containing the data values.
+    :param vmin: (float) Minimum data value or None.
+    :param vmax: (float) Maximum data value or None.
+    :param cmap: (dict) Colormap for converting the data.
+    :returns: (QImage) Image from given data.
+    
+    Example::
+        
+        import numpy as np
+        from qao.plot.image import createQImage, cmap_jet
+        
+        data = np.random.rand(200, 200)
+        qimage = createQImage(data, cmap = cmap_jet)
+        qimage.save("random.png")
+    """
     data, vmin, vmax = __checkTypes(data, vmin, vmax)
     # write rgb data to new QImage
     qimage = QtGui.QImage(data.shape[1], data.shape[0], QtGui.QImage.Format_RGB32)
@@ -92,7 +166,30 @@ def createQImage(data, vmin = None, vmax = None, cmap = cmap_wjet):
     return qimage
 
 def updateQImage(qimage, data, vmin = None, vmax = None, cmap = cmap_wjet):
-    "modify existing QImage using an array of data and the given colormap"
+    """
+    Modify a QImage in place from data array.
+
+    Like :func:`createQImage`, but instead of creating a new QImage,
+    this function updates an existing QImage. The size of the image
+    must not change.
+    
+    :param qimage: (QImage) QImage object to be updated.
+    :param data: (ndarray) Array containing the data values.
+    :param vmin: (float) Minimum data value or None.
+    :param vmax: (float) Maximum data value or None.
+    :param cmap: (dict) Colormap for converting the data.
+    :returns: (QImage) Image from given data.
+    
+    Example::
+        
+        import numpy as np
+        from qao.plot.image import createQImage, updateQImage
+        
+        data = np.random.rand(200, 200)
+        qimage = createQImage(np.zeros_like(data))
+        updateQImage(qimage, data)
+        qimage.save("random.png")
+    """
     data, vmin, vmax = __checkTypes(data, vmin, vmax)
     # write rgb data to existing QImage
     assert data.size == (qimage.height()*qimage.width()), "invalid size"
@@ -138,6 +235,10 @@ except:
 ########################################################################################################################################################
 
 if __name__ == '__main__':
+    data = np.random.rand(100,100)
+    
+    
+    
     import time
     
     # create test data
