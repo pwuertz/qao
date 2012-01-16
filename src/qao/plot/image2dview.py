@@ -1,3 +1,18 @@
+"""
+Viewer for 2D data
+===================
+
+The classes in :mod:`qao.plot.image2dview` may be used to construct applications for analyzing
+2d images. A colored data-to-image conversion is provided by utilizing the functions in :mod:`qao.plot.image`.
+Furthermore, tools for selecting points/lines and rectangles in an image can be added to an image
+viewer, so the user may mark regions of interest.
+
+Example:
+    
+    .. literalinclude:: ../src/qao/plot.image2dview.py
+        :pyobject: testWidgets
+"""
+
 import sys
 import numpy
 from qao.plot import image
@@ -15,6 +30,10 @@ class Emitter(QtCore.QObject):
         QtCore.QObject.__init__(self)
 
 class LinescanItem(QtGui.QGraphicsItemGroup):
+    """
+    Tool for selecting a point or lines in horizontal and vertical direction
+    within an image.
+    """
     
     class MoveHandle(QtGui.QGraphicsEllipseItem):
         def __init__(self, parent):
@@ -60,6 +79,11 @@ class LinescanItem(QtGui.QGraphicsItemGroup):
         self.update()
         
     def setLinescanPos(self, point):
+        """
+        Set the selected linescan position to a given point.
+        
+        :param point: (QPoint) New linescan position.
+        """
         self.lineHorizontal.setPos(0, point.y())
         self.lineVertical.setPos(point.x(), 0)
         self.handle.setPos(point)
@@ -67,10 +91,18 @@ class LinescanItem(QtGui.QGraphicsItemGroup):
         self.update()
         
     def getLinescanPos(self):
+        """
+        Retrieve the current linescan position.
+        
+        :returns: (Qpoint) Linescan position
+        """
         return self.handle.pos().toPoint()
 
 
 class ResizableRectItem(QtGui.QGraphicsRectItem):
+    """
+    Tool for selecting rectangular regions within an image.
+    """
     
     class ResizeHandle(QtGui.QGraphicsRectItem):
         def __init__(self, parent):
@@ -103,21 +135,55 @@ class ResizableRectItem(QtGui.QGraphicsRectItem):
         self.emitter = Emitter()
         
     def setColor(self, color):
+        """
+        Change the color of the selection rectangle.
+        
+        The borders and the background will be colored with the given color.
+        The background will be slightly transparent, so the image behind the
+        rectangle stays visible.
+        
+        :param color: (QColor) New color.
+        """
+        color = QtGui.QColor(color)
         color.setAlpha(50)
         self.setBrush(QtGui.QBrush(color))
         color.setAlpha(255)
         self.setPen(QtGui.QPen(color, 1.0))
 
     def setText(self, text):
+        # TODO: doesnt do anything yet
         self.labelItem.setPlainText(text)
         
     def resizeRect(self, width, height):
+        """
+        Change the size of the current rectangle without changing its position.
+        
+        :param width: (int) New width in pixels.
+        :param height: (int) New height in pixels.
+        """
         rect = self.rect()
         rect.setWidth(width)
         rect.setHeight(height)
         self.setRect(rect)
+    
+    def getRect(self):
+        """
+        Return the currently selected rectangle coordinates.
+        
+        :returns: (QRect) Selection rectangle.
+        """
+        return self.rect()
 
 class GraphWidget(QtGui.QGraphicsView):
+    """
+    The GraphWidget is a QGraphicsView derived widget for simple plotting of one dimensional
+    data. Multiple colored plots are supported, so it may be used to display data and fit curves
+    within one figure. Its main purpose is to serve as linescan-plotting widget for :class:`Data2DViewer`.
+    
+    :param parent: Parent parameter of QWidget objects.
+    :param orientation: Qt.Horizontal or Qt.Vertical.
+    """
+    
     colors = {"k": QtCore.Qt.black,
               "r": QtCore.Qt.red,
               "g": QtCore.Qt.green,
@@ -136,15 +202,31 @@ class GraphWidget(QtGui.QGraphicsView):
         
         # path items
         self.pathItem_list = []
-        
+    
     def setAntialiasing(self, enabled):
+        """
+        Enable or disable antialiasing for performance control.
+        
+        :param enabled: (bool)
+        """
         self.setRenderHint(QtGui.QPainter.Antialiasing, enabled)
         
     def clear(self):
+        """
+        Clear all plots from this widget.
+        """
         for pathItem in self.pathItem_list:
             self.scene.removeItem(pathItem)
             
     def addPlot(self, X, Y, color = "k"):
+        """
+        Add a new plot to this widget. You can define x and y data as well as
+        the color of the plot line.
+        
+        :param X: (ndarray) x points
+        :param Y: (ndarray) y points
+        :param color: (str) Color of the plot ("k", "r", "g", "b").
+        """
         if color in self.colors: color = self.colors[color] 
         
         path = QtGui.QPainterPath()
@@ -154,6 +236,13 @@ class GraphWidget(QtGui.QGraphicsView):
         self.pathItem_list.append(self.scene.addPath(path, QtGui.QPen(color)))
         
     def updatePlot(self, index, X, Y):
+        """
+        Change the xy data of an existing plot.
+        
+        :param index: (int) Index of the plot to update (starts at 0).
+        :param X: (ndarray) x points
+        :param Y: (ndarray) y points
+        """
         path = QtGui.QPainterPath()
         path.moveTo(X[0],Y[0])
         for i in xrange(1, len(X)):
@@ -161,9 +250,20 @@ class GraphWidget(QtGui.QGraphicsView):
         self.pathItem_list[index].setPath(path)
         
     def showPlot(self, index, visible = True):
+        """
+        Change the visibility of the plot with the given index.
+        
+        :param index: (int) Index of the plot.
+        :param visible: (bool) True if the plot should become visible.
+        """
         self.pathItem_list[index].setVisible(visible)
         
     def hidePlot(self, index):
+        """
+        Hide the plot with the given index.
+        
+        :param index: (int)
+        """
         self.pathItem_list[index].hide()
         
     def resizeEvent(self, event):
@@ -183,6 +283,10 @@ class GraphWidget(QtGui.QGraphicsView):
             self.scale(-h,-w)
             
 class ImageWidget(QtGui.QGraphicsView):
+    """
+    A image viewer derived from QGraphicsView.
+    """
+    
     def __init__(self, parent = None):
         QtGui.QGraphicsScene.__init__(self, parent)
         self.setRenderHint(QtGui.QPainter.Antialiasing, True)
@@ -241,6 +345,7 @@ class ImageWidget(QtGui.QGraphicsView):
         
     def addRectSelection(self, color = QtCore.Qt.black, text = "", rect = QtCore.QRect()):
         rect = ResizableRectItem(self.scene())
+        rect.setColor(color)
         return rect
         
     def addLineSelection(self, pos = QtCore.QPointF()):
@@ -249,6 +354,11 @@ class ImageWidget(QtGui.QGraphicsView):
         return linescan
         
 class Data2DViewer(QtGui.QWidget):
+    """
+    A data viewer constructed of other classes in this module. Displays an image of the
+    data supplied in the center, adds a linescan tool and shows x and y plots of line-slices.
+    """
+    
     def __init__(self, *args, **kwargs):
         # setup widgets
         QtGui.QWidget.__init__(self, *args, **kwargs)
@@ -318,8 +428,8 @@ class Data2DViewer(QtGui.QWidget):
         Y = numpy.linspace(0, 1, h)
         self.linescanXWidget.updatePlot(0, X, data[y,:])
         self.linescanYWidget.updatePlot(0, Y, data[:,x])
-   
-if __name__ == "__main__":
+
+def testWidgets():
     # sample data
     Y,X = numpy.ogrid[-1:1:512j,-1:1:768j]
     data = 1 - numpy.sin(2*X)**3 + numpy.sin(-2*Y)**3
@@ -330,13 +440,19 @@ if __name__ == "__main__":
     data /= data.max()
     
     app = QtGui.QApplication(sys.argv)
-    win = Data2DViewer()
-    win.show()
-    win.setImageData(data, colormap="wjet")
+    # viewer with linescans and crosshair
+    win1 = Data2DViewer()
+    win1.show()
+    win1.setImageData(data, colormap="wjet")
     
+    # viewer only
     win2 = ImageWidget()
     win2.setAllowScaling(True)
     win2.setImageData(data, colormap="gray")
+    win2.addRectSelection("red", "Selection")
     win2.show()
     app.exec_()
+
+if __name__ == "__main__":
+    testWidgets()
 
