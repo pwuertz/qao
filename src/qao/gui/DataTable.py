@@ -2,7 +2,8 @@
 Data Table
 -------------
 
-
+The :mod:`DataTable` module contains classes for acquiring and storing data
+of various types in a single table-like structure.
 """
 
 import time
@@ -16,6 +17,11 @@ from MatplotlibWidget import MatplotlibWidget
 ID_KEY_DEFAULT = "id"
 
 class DataTable(QtCore.QObject):
+    """
+    This class provides 
+    
+    """
+    
     cleared      = QtCore.pyqtSignal()
     rowInserted  = QtCore.pyqtSignal(int)
     colInserted  = QtCore.pyqtSignal(int)
@@ -32,7 +38,7 @@ class DataTable(QtCore.QObject):
     
     def clear(self):
         """
-        clear/init table
+        Clear and re-initialize the data table.
         """
         # column information
         colInfos  = ["name", "flags", "dtype", "expression"]
@@ -50,6 +56,15 @@ class DataTable(QtCore.QObject):
         self._modified = False
     
     def save(self, filename):
+        """
+        Save the table to a file.
+        
+        The type of file is determined by the file suffix. Currently,
+        python readable files (*.py) and CSV files (*.csv) are supported.
+        
+        :param filename: Path to file.
+        :returns: (bool) Success of saving the file.
+        """
         ext = os.path.splitext(filename)[1].lower()
         fh = open(filename, "w")
         
@@ -87,7 +102,13 @@ class DataTable(QtCore.QObject):
 
     def addColumns(self, newColNames):
         """
-        function for adding columns, only new column names are added
+        Add new columns to the table.
+        
+        New columns named by the elements in `newColNames` will be added to the right.
+        If the same column name already exists, no new column will be added and the new
+        name will be silently ignored.
+        
+        :param newColNames: ([str]) List of new column names.
         """
         # determine new columns to be inserted
         oldColNames = self.colInfo["name"].tolist()
@@ -108,7 +129,9 @@ class DataTable(QtCore.QObject):
     
     def removeColumn(self, col):
         """
-        remove a column from the table
+        Remove a column from the table.
+        
+        :param col: (int) Index of the column to be removed.
         """
         if self.checkFlag(col, "persistent"): return
         self.colInfo = np.delete(self.colInfo, col)
@@ -119,7 +142,9 @@ class DataTable(QtCore.QObject):
         
     def removeRow(self, row):
         """
-        remove a row from the table
+        Remove a row from the table.
+        
+        :param row: (int) Index of the row to be removed
         """
         self.data = np.delete(self.data, row, axis=0)
         
@@ -128,14 +153,27 @@ class DataTable(QtCore.QObject):
     
     def setGroupBy(self, col, enabled = True):
         """
-        use a column to group returned values by elements of this column
+        Declare a column as `group column`.
+        
+        This method sets the "group" flag on a specific column. The group
+        column will affect the output of :func:`getColumnValuesGrouped`.
+        Only one column can be the group column. 
+        
+        :param col: (int) Index of the column.
+        :param enabled: (bool) Set/unset group column.
         """
         self.setFlagUnique(col, "group", enabled)
     
     def setDynamic(self, col, expression):
         """
-        set expression to be evaluated whenever data in a row changes
-        remove expression by passing a False expression
+        Declare a column as `dynamic column`.
+        
+        Set an expression to be evaluated for the column's cells, whenever
+        the data in a row changes. Remove the expression and the dynamic
+        behavior by passing False as expression.
+        
+        :param col: (int) Index of the column.
+        :param expression: (str) Expression to be evaluated.
         """
         if col == 0: return # not allowed for id column
         
@@ -149,8 +187,13 @@ class DataTable(QtCore.QObject):
     
     def updateDynamic(self, row = None, col = None):
         """
-        recalculate values of dynamic columns.
-        if row or column is None, recalculate all cells.
+        Recalculate values of dynamic columns.
+        
+        The cell to be recalculated is determined by the `row` and `col`
+        index. If `row` or `column` is None, all cells are recalculated.
+        
+        :param row: (int) Row index.
+        :param col: (int) Column index.
         """
         # determine which cells to update
         dynCols = self.searchFlag("dynamic")
@@ -173,8 +216,8 @@ class DataTable(QtCore.QObject):
     
     def _recalculateDynamic(self, rows, cols):
         """
-        internal recalculation of dynamic expressions
-        not to be called from outside
+        Internal recalculation of dynamic expressions.
+        Not to be called from outside.
         """
         self._modified = True
         # evaluate dynamic expressions for each row
@@ -194,14 +237,31 @@ class DataTable(QtCore.QObject):
 
     def toggleFlag(self, col, flag):
         """
-        toggle a flag on a column
+        Toggle a flag on a column.
+        
+        If the flag was previously cleared, change the status to set and vice versa.
+        
+        :param col: (int) Column index.
+        :param flag: (str) Flag to set/clear.
+        
+        .. seealso:: :func:`setFlag` :func:`checkFlag`
+        
         """
         isSet = self.checkFlag(col, flag)
         self.setFlag(col, flag, enabled=not isSet)
 
     def setFlag(self, col, flag, enabled = True):
         """
-        set a flag on a column
+        Set a flag on a column.
+        
+        A flag is a string attribute that can be set to enabled or disabled
+        for any column, may be used for special treatment of columns.
+        
+        :param col: (int) Column index.
+        :param flag: (str) Flag to set/clear.
+        :param enabled: (bool) Set or clear flag.
+        
+        .. seealso:: :func:`checkFlag`
         """
         flags  = self.colInfo[col]["flags"]
         nflags = len(flags)
@@ -213,7 +273,14 @@ class DataTable(QtCore.QObject):
     
     def setFlagUnique(self, col, flag, enabled = True):
         """
-        set flag on a column, unset this flag on other columns
+        Set flag on a column and clear this flag on other columns.
+        
+        Same functionality as :func:`setFlag`, but this method ensures that
+        the given flag is only set on one single column.
+        
+        :param col: (int) Column index.
+        :param flag: (str) Flag to set/clear.
+        :param enabled: (bool) Set or clear flag.
         """
         for c in range(len(self.colInfo)):
             if c != col:
@@ -222,19 +289,28 @@ class DataTable(QtCore.QObject):
 
     def setFlagAll(self, flag, enabled = True):
         """
-        clear flag from all columns
+        Set or clear a flag, affecting all columns.
+        
+        :param flag: (str) Flag to set/clear.
+        :param enabled: (bool) Set or clear flag.
         """
         for i in range(len(self.colInfo)): self.setFlag(i, flag, enabled)
     
     def checkFlag(self, col, flag):
         """
-        check if a flag is set on a column
+        Check if a flag is set on a column.
+        
+        :param col: (int) Column index.
+        :param flag: (str) Flag to check for.
+        :returns: (bool) Status of the flag.
         """
         return flag in self.colInfo[col]["flags"]
     
     def searchFlag(self, flag):
         """
-        return a list of columns with flag set
+        Return a list of columns with `flag` set.
+        
+        :returns: ([str]) Columns with active flag.
         """
         colFlags = self.colInfo["flags"]
         hasflag  = lambda i: flag in colFlags[i]
@@ -242,8 +318,13 @@ class DataTable(QtCore.QObject):
     
     def insertData(self, data_dict):
         """
-        insert data from data_dict, add rows and columns if necessary
-        this also triggers reevaluation of dynamic expressions
+        Insert data into a table.
+        
+        The data is read from a dictionary, where the keys denote the column for the
+        values to be inserted. New rows and columns are created if necessary.
+        This also triggers reevaluation of dynamic expressions.
+        
+        :param data_dict: (dict) New data to be inserted.
         """
         # add new columns
         self.addColumns(data_dict.keys())
