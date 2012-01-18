@@ -363,8 +363,14 @@ class DataTable(QtCore.QObject):
     
     def getColumnValues(self, *columns):
         """
-        get a list of rows containing values from all requested columns
-        only rows with column values not-None are returned
+        Get values from multiple columns.
+        
+        A subset of the table is returned containing the requested columns.
+        Only rows with column values that are not None are included in the
+        result.
+        
+        :param columns: (int) Column indices.
+        :returns: ([ndarray]) List of values for selected columns.
         """
         # determine rows without None values
         rowsValid = np.not_equal(self.data[:, columns], None).all(axis=1)
@@ -376,8 +382,20 @@ class DataTable(QtCore.QObject):
     
     def getColumnValuesGrouped(self, *columns):
         """
-        tuples of group value and columns are returned for each unique value
-        of the group-column (value, [C1,C2,...])
+        Get grouped values from multiple columns.
+        
+        A subset of the table is returned containing the requested columns.
+        Only rows with column values that are not None are included in the
+        result.
+        
+        The values are grouped by the values found in the group column. For
+        each unique value in the group column, the value and a list of requested
+        columns is returned.
+        
+        The result is structured like [[group_val1, col1, col2, ..], [group_val2, col1, col2, ..], ..].
+        
+        :param columns: (int) Column indices.
+        :returns: List of group values and matching column values.
         """
         # in case no group column is set
         groupCols = self.searchFlag("group")
@@ -399,6 +417,11 @@ class DataTable(QtCore.QObject):
         return groupedColumnData
 
 class DataTableModel(QtCore.QAbstractTableModel):
+    """
+    This class implements a table model to be used in conjunction with QTableView.
+    A table using this model will be able to show a view of a DataTable.
+    """
+    
     def __init__(self, dataTable): 
         QtCore.QAbstractTableModel.__init__(self)
         # connect signals from the data source
@@ -504,6 +527,13 @@ class DataTableModel(QtCore.QAbstractTableModel):
         return True
 
 class DataTableView(QtGui.QTableView):
+    """
+    DataTableView is a QTableView subclass that shows the contents of a :class:`DataTable`.
+    It furthermore implements functionality specifically for DataTable, like context menus.
+    
+    :param dataTable: (DataTable) Initial table object to show a view for.
+    """
+    
     default_path     = ""
     default_path_tpl = ""
     
@@ -525,7 +555,9 @@ class DataTableView(QtGui.QTableView):
     
     def saveTemplate(self, fname):
         """
-        save table header and visual appearance to a file
+        Save table header and visual appearance to a file.
+        
+        :param fname: (str) Filename to store the layout to.
         """
         colInfo = repr(self.dataTable.colInfo.tolist())
         viewState = repr(self.horizontalHeader().saveState().data())
@@ -537,8 +569,10 @@ class DataTableView(QtGui.QTableView):
     
     def loadTemplate(self, fname):
         """
-        load table header and visual appearance from a file.
-        this will drop all information from this table.
+        Load table header and visual appearance from a file.
+        Be warned, this will drop all information from this table.
+        
+        :param fname: (str) Filename to restore layout from.
         """
         # try to load data from file
         try:
@@ -568,6 +602,10 @@ class DataTableView(QtGui.QTableView):
         return True
         
     def loadTemplateDialog(self):
+        """
+        This function is a wrapper around :func:`loadTemplate`, displaying
+        a dialog for the user to choose the file to load the template from.
+        """
         filefilter = "Table Template (*.tpl)"
         fname = QtGui.QFileDialog.getOpenFileNameAndFilter(self, "Load Template", DataTableView.default_path_tpl, filefilter)[0]
         fname = str(fname)
@@ -576,6 +614,10 @@ class DataTableView(QtGui.QTableView):
             DataTableView.default_path_tpl = os.path.dirname(fname)
     
     def saveTemplateDialog(self):
+        """
+        This function is a wrapper around :func:`saveTemplate`, displaying
+        a dialog for the user to choose the file to save the template to.
+        """
         filefilter = "Table Template (*.tpl)"
         fname = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Template", DataTableView.default_path_tpl, filefilter)[0]
         fname = str(fname)
@@ -585,6 +627,9 @@ class DataTableView(QtGui.QTableView):
             DataTableView.default_path_tpl = os.path.dirname(fname)
 
     def saveTableDialog(self):
+        """
+        Displays a dialog for saving the data in the table to a file.
+        """
         filefilter = ["CSV File (*.csv)", "Python File (*.py)"]
         fname, filt = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", DataTableView.default_path, ";;".join(filefilter))
         fname = str(fname)
@@ -595,6 +640,9 @@ class DataTableView(QtGui.QTableView):
             DataTableView.default_path = os.path.dirname(fname)
 
     def showColumnDialog(self):
+        """
+        Displays a dialog for selectively showing and hiding columns of the table.
+        """
         # build list for columns and visibility
         colNames   = self.dataTable.colInfo["name"].tolist()
         listWidget = QtGui.QListWidget()
@@ -621,6 +669,11 @@ class DataTableView(QtGui.QTableView):
         dialog.exec_()
     
     def setDataTable(self, dataTable):
+        """
+        Change the DataTable object used by the view.
+        
+        :param dataTable: (DataTable) Instance of DataTable.
+        """
         self.setModel(DataTableModel(dataTable))
         self.plotWidget.setDataTable(dataTable)
         
@@ -733,6 +786,9 @@ class DataTableView(QtGui.QTableView):
             self.dataTable[rows, self.dataTable.discardCol] = False
 
 class DataTablePlot(MatplotlibWidget):
+    """
+    Widget for plotting columns of a :class:`DataTableView`.
+    """
     
     def __init__(self, dataTable):
         MatplotlibWidget.__init__(self)
@@ -821,6 +877,10 @@ class DataTablePlot(MatplotlibWidget):
         self.draw()
 
 class DataTableTabs(QtGui.QTabWidget):
+    """
+    Tabbed view of multiple DataTables. Adding more functionality for interacting
+    with DataTables.
+    """
     def __init__(self, default_id_key = None):
         QtGui.QTabWidget.__init__(self)
         self.setTabsClosable(True)
@@ -838,7 +898,10 @@ class DataTableTabs(QtGui.QTabWidget):
     
     def newTable(self, name, tableView = None):
         """
-        add a new table to the tab widget
+        Add a new table to the tab widget.
+        
+        :param name: (str) Name of the new table.
+        :param tableView: Instance or None to create one.
         """
         if not tableView:
             dataTable = DataTable(id_key = self.default_id_key)
@@ -849,6 +912,11 @@ class DataTableTabs(QtGui.QTabWidget):
         return tableView
     
     def setActiveTable(self, tab):
+        """
+        Define a table to be the active table.
+        
+        :param tab: (int) Index of the tab.
+        """
         for i in range(self.count()):
             title = str(self.tabText(i))
             if title[-1] == "*": self.setTabText(i, title[:-1])

@@ -9,7 +9,7 @@ viewer, so the user may mark regions of interest.
 
 Example:
     
-    .. literalinclude:: ../src/qao/plot.image2dview.py
+    .. literalinclude:: ../src/qao/plot/image2dview.py
         :pyobject: testWidgets
 """
 
