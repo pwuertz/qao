@@ -49,12 +49,15 @@ are printed and plotted afterwards::
     p.plot(x, y_fit, "r-")
     p.show()
 
+A small class for multiprocessing application of fitters is implemented in :class:`FitJob`.
+
 .. automodule:: qao.fit.fitter
 .. automodule:: qao.fit.gauss
 
 """
 
 from gauss import Gauss1D, Gauss2D, Gauss2DRot
+from fitter import FitJob
 
 if __name__ == '__main__':
     import pylab as p
