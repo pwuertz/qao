@@ -85,7 +85,6 @@ def __checkTypes(data, vmin, vmax):
     data = np.ascontiguousarray(data, dtype=np.double)
     assert data.ndim == 2, "invalid number of dimensions"
     # vmin and vmax must be double, determine values if necessary
-    print vmin
     if vmin is None:
         vmin = float(data.min())
     else:
