@@ -131,7 +131,7 @@ class LevmarFitter(object):
             raise ValueError("Shape mismatch. Expected dimensions %s." % self.data.shape) 
         self.data = data
     
-    def fit(self, pars_guess = None, tau = 1e-2, eps1 = 1e-6, eps2 = 1e-6, kmax = 50):
+    def fit(self, pars_guess = None, tau = 1e-2, eps1 = 1e-6, eps2 = 1e-6, kmax = 50, return_dict = False):
         """
         Fit the data currently assigned to the fitter.
         
@@ -150,9 +150,12 @@ class LevmarFitter(object):
         if len(pars_guess) != len(self.pars_name):
             raise ValueError("Invalid number of guess parameters.")
         
-        pars_fit = self.__LM(pars_guess, tau, eps1, eps2, kmax, verbose = self.verbose)
+        pars_fit, fit_dict = self.__LM(pars_guess, tau, eps1, eps2, kmax, verbose = self.verbose, return_dict = True)
         self.pars_fit[:] = pars_fit[:]
-        return pars_fit
+        if return_dict:
+            return pars_fit, fit_dict
+        else:
+            return pars_fit
     
     def __JACapprox(self, pars):
         
@@ -169,7 +172,7 @@ class LevmarFitter(object):
             self._J[i, :] *= 1./(2*delta)
     
     def __LM(self, pars, tau = 1e-2, eps1 = 1e-6, eps2 = 1e-6, kmax = 50,
-           verbose = False):
+           verbose = False, return_dict = False):
         """Implementation of the Levenberg-Marquardt algorithm in pure
         Python. Solves the normal equations."""
         
@@ -186,21 +189,20 @@ class LevmarFitter(object):
     
         k = 0; nu = 2
         mu = tau * max(np.diag(A))
-        stop = np.linalg.norm(g, np.Inf) < eps1
-        while not stop and k < kmax:
+        self.stop = np.linalg.norm(g, np.Inf) < eps1
+        while not self.stop and k < kmax:
             k += 1
     
             try:
                 d = np.linalg.solve( A + mu*I, -g)
             except np.linalg.LinAlgError:
-                print "Singular matrix encountered in LM"
-                stop = True
-                reason = 'singular matrix'
+                self.stop = True
+                self.reason = 'singular matrix'
                 break
     
             if np.linalg.norm(d) < eps2*(np.linalg.norm(pars) + eps2):
-                stop = True
-                reason = 'small step'
+                self.stop = True
+                self.reason = 'small step'
                 break
     
             pars_new = pars + d
@@ -217,8 +219,8 @@ class LevmarFitter(object):
                 A = np.inner(self._J, self._J)
                 g = np.inner(self._J, self._f)
                 if (np.linalg.norm(g, np.Inf) < eps1): # or norm(fnew) < eps3):
-                    stop = True
-                    reason = "small gradient"
+                    self.stop = True
+                    self.reason = "small gradient"
                     break
                 mu = mu * max([1.0/3, 1.0 - (2*rho - 1)**3])
                 nu = 2.0
@@ -227,17 +229,24 @@ class LevmarFitter(object):
                 nu = 2*nu
     
             if verbose:
-                print "step %2d: |f|: %9.6g mu: %8.3g rho: %8.3g"%(k, np.linalg.norm(self._f), mu, rho)
+                print "step %2d: |f|: %9.6g mu: %8.3g rho: %8.3g" % (k, np.linalg.norm(self._f), mu, rho)
     
         else:
-            reason = "max iter reached"
+            self.reason = "max iter reached"
     
         if verbose:
-            print reason
+            print self.reason
         
-        self.fit_log = {"iter": k, "reason": reason}
+        self.fit_log = {"iter": k, "reason": self.reason}
         
-        return pars
+        if return_dict:
+            return pars, self.fit_log
+        else:
+            return pars
+    
+    def abort(self):
+        self.reason = "user abort"
+        self.stop = True
 
     def __estError(self, pars):
         """
@@ -429,7 +438,6 @@ class FitJob(QtCore.QObject):
     def __init__(self):
         QtCore.QObject.__init__(self)
         self.process = multiprocessing.Process(target = self.__run)
-        self.queue = multiprocessing.Queue()
     
     def startFit(self, fitter):
         """
@@ -444,6 +452,8 @@ class FitJob(QtCore.QObject):
         if self.process.is_alive():
             raise RuntimeError("fit already running")
         self.fitter = fitter
+        self.process = multiprocessing.Process(target = self.__run)
+        self.queue = multiprocessing.Queue()
         self.process.start()
         self.timerId = self.startTimer(20)
     
