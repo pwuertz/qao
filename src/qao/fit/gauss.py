@@ -89,6 +89,10 @@ class Gauss1D(LevmarFitter):
         cache_z, cache_e = self.cache
         p = pars
         weave.inline(self.fJ_code, ["f", "J", "cache_z", "cache_e", "p"], **opt_args)
+    
+    def sanitizePars(self, pars):
+        pars[2] = abs(pars[2])
+        return pars
 
 class Gauss2D(LevmarFitter):
     r"""
@@ -209,6 +213,11 @@ class Gauss2D(LevmarFitter):
         cache_ex, cache_ey = self.cache
         p = pars
         weave.inline(self.fJ_code, ["f", "J", "cache_ex", "cache_ey", "p"], **opt_args)
+
+    def sanitizePars(self, pars):
+        pars[2] = abs(pars[2])
+        pars[4] = abs(pars[4])
+        return pars
 
 
 class Gauss2DRot(LevmarFitter):
@@ -351,6 +360,10 @@ class Gauss2DRot(LevmarFitter):
         p = pars
         weave.inline(self.fJ_code, ["f", "J", "p", "data"], **opt_args)
 
+    def sanitizePars(self, pars):
+        pars[2] = abs(pars[2])
+        pars[4] = abs(pars[4])
+        return pars
 
 if __name__ == "__main__":
         

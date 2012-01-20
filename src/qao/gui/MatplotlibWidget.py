@@ -2,7 +2,6 @@
 Matplotlib Widget
 -----------------
 
-
 """
 
 import numpy as np
@@ -251,6 +250,7 @@ class MatplotlibWidget(QtGui.QWidget):
         self._setupLines()
     
     def _setupLines(self):
+        if not len(self.plotLineGroups): return
         self._needSetupLines = False
         self._needRescale = False
         # clear lines from axes
@@ -269,6 +269,7 @@ class MatplotlibWidget(QtGui.QWidget):
     def _setupScale(self):
         self._needRescale = False
         if not self.actionAutoscale.isChecked(): return
+        if not len(self.plotLineGroups): return
         for ax in self.axes:
             ax.relim()
             ax.autoscale()

@@ -151,11 +151,22 @@ class LevmarFitter(object):
             raise ValueError("Invalid number of guess parameters.")
         
         pars_fit, fit_dict = self.__LM(pars_guess, tau, eps1, eps2, kmax, verbose = self.verbose, return_dict = True)
-        self.pars_fit[:] = pars_fit[:]
+        self.pars_fit[:] = self.sanitizePars(pars_fit)
         if return_dict:
-            return pars_fit, fit_dict
+            return self.pars_fit[:], fit_dict
         else:
-            return pars_fit
+            return self.pars_fit[:]
+    
+    def sanitizePars(self, pars):
+        """
+        Postprocess parameters after fitting.
+        
+        Reimplement this function to sanitize parameters.        
+        
+        :param pars: (ndarray) Fit parameter results.
+        :returns: (ndarray) Processed parameters.
+        """
+        return pars
     
     def __JACapprox(self, pars):
         
