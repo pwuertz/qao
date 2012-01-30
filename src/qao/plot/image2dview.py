@@ -395,8 +395,8 @@ class Data2DViewer(QtGui.QWidget):
         self.linescanItem.emitter.signal.connect(self.handleLinescanChange)
         
         # add selection rectangle
-        self.selectionItem = self.imageWidget.addRectSelection()
-        print self.imageWidget.scene().removeItem(self.selectionItem)
+        #self.selectionItem = self.imageWidget.addRectSelection()
+        #self.imageWidget.scene().removeItem(self.selectionItem)
         
         # defaults
         self.setImageData(numpy.zeros([100, 100], dtype=float))
