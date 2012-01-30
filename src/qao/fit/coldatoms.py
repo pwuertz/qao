@@ -146,9 +146,13 @@ class Bimodal2D(LevmarFitter):
     function. The data to be fitted is interpreted as rectangular image,
     given by a 2d-ndarray. The functions are aligned to the x and y axis.
     
-    .. math:: p(x, y) = \max\left[A_g - \frac{(x-x_0)^2}{2 a_x^2} - \frac{(x-x_0)^2}{2 a_x^2} , 0 \right]
-    .. math:: g(x, y) = A_p\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma_x^2}-\frac{(y-y_0)^2}{2 \sigma_y^2}\right]
-    .. math:: bimodal(x, y) = p(x, y) + g(x, y) + \text{off}
+    .. math::
+    
+        p(x, y) = \max\left[A_p - \frac{(x-x_0)^2}{2 a_x^2} - \frac{(x-x_0)^2}{2 a_x^2} , 0 \right]
+        
+        g(x, y) = A_g\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma_x^2}-\frac{(y-y_0)^2}{2 \sigma_y^2}\right]
+        
+        \text{bimodal}(x, y) = p(x, y) + g(x, y) + \text{off}
     
     The order of the fit parameters is (A_p, A_g, x_0, a_x, s_x, y_0, a_y, s_y, off). 
     
