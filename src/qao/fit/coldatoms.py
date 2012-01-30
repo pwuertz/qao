@@ -135,6 +135,18 @@ class ThomasFermi2D(LevmarFitter):
         pars[2] = abs(pars[2])
         pars[4] = abs(pars[4])
         return pars
+    
+    def integral(self, pars = None):
+        """
+        Calculate the integral of the Thomas Fermi function
+        defined by `pars`.
+        
+        :param pars: (ndarray) Parameters or `None` to use param from fit.
+        :return: (float) Value of the integral.
+        """
+        if pars is None:
+            pars = self.pars_fit
+        return 2.*np.pi / 5. * pars[0] * pars[2] * pars[4]
 
 class Bimodal2D(LevmarFitter):
     r"""
@@ -242,6 +254,41 @@ class Bimodal2D(LevmarFitter):
     def sanitizePars(self, pars):
         pars[[3,4,6,7]] = np.abs(pars[[3,4,6,7]])
         return pars
+
+    def integral_tf(self, pars = None):
+        """
+        Calculate the integral of the Thomas Fermi part of the bimodal
+        distribution defined by `pars`.
+        
+        :param pars: (ndarray) Parameters or `None` to use param from fit.
+        :return: (float) Value of the integral.
+        """
+        if pars is None:
+            pars = self.pars_fit
+        return 2.*np.pi / 5. * pars[0] * pars[3] * pars[6]
+
+    def integral_gauss(self, pars = None):
+        """
+        Calculate the integral of the gaussian part of the bimodal
+        distribution defined by `pars`.
+        
+        :param pars: (ndarray) Parameters or `None` to use param from fit.
+        :return: (float) Value of the integral.
+        """
+        if pars is None:
+            pars = self.pars_fit
+        return 2.*np.pi * pars[1] * pars[4] * pars[7]
+
+    def integral(self, pars = None):
+        """
+        Calculate the integral of bimodal distribution defined by `pars`.
+        
+        :param pars: (ndarray) Parameters or `None` to use param from fit.
+        :return: (float) Value of the integral.
+        """
+        if pars is None:
+            pars = self.pars_fit
+        return self.integral_gauss(pars) + self.integral_tf(pars)
 
 if __name__ == "__main__":
     import time

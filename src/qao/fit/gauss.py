@@ -219,6 +219,17 @@ class Gauss2D(LevmarFitter):
         pars[4] = abs(pars[4])
         return pars
 
+    def integral(self, pars = None):
+        """
+        Calculate the integral of the gauss function defined by `pars`.
+        
+        :param pars: (ndarray) Parameters or `None` to use param from fit.
+        :return: (float) Value of the integral.
+        """
+        if pars is None:
+            pars = self.pars_fit
+        return 2.*np.pi * pars[0] * pars[2] * pars[4]
+
 
 class Gauss2DRot(LevmarFitter):
     r"""
@@ -364,6 +375,17 @@ class Gauss2DRot(LevmarFitter):
         pars[2] = abs(pars[2])
         pars[4] = abs(pars[4])
         return pars
+    
+    def integral(self, pars = None):
+        """
+        Calculate the integral of the gauss function defined by `pars`.
+        
+        :param pars: (ndarray) Parameters or `None` to use param from fit.
+        :return: (float) Value of the integral.
+        """
+        if pars is None:
+            pars = self.pars_fit
+        return 2.*np.pi * pars[0] * pars[2] * pars[4]
 
 if __name__ == "__main__":
         
