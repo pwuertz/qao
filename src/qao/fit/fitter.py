@@ -31,6 +31,11 @@ class LevmarFitter(object):
     The :class:`LevmarFitter` class must be subclassed for new fit model functions. For each
     new fitting class, you must provide the names for the fitting parameters and implement the
     methods calculating the fit model and guessing initial parameters.
+    
+    The Levenberg-Marquardt algorithm minimizes the distance between data points and the
+    model function, which is to be implemented in the subclass. It does not care about positions
+    or dimensionalities of the data points or the fit model, all it needs is a 1D array of
+    residuals to minimize.
         
     First, you reimplement the :func:`__init__` method and provide the names for the fit parameters
     as simple list of strings when calling the parent constructor. This also determines the
