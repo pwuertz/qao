@@ -94,6 +94,17 @@ class Gauss1D(LevmarFitter):
         pars[2] = abs(pars[2])
         return pars
 
+    def integral(self, pars = None):
+        """
+        Calculate the integral of the gauss function defined by `pars`.
+        
+        :param pars: (ndarray) Parameters or `None` to use param from fit.
+        :return: (float) Value of the integral.
+        """
+        if pars is None:
+            pars = self.pars_fit
+        return np.sqrt(2.*np.pi) * pars[0] * pars[2]
+
 class Gauss2D(LevmarFitter):
     r"""
     Fitter for two-dimensional axis aligned Gauss functions.
