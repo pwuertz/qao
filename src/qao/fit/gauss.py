@@ -111,8 +111,8 @@ class Gauss2D(LevmarFitter):
     def __init__(self, data):
         LevmarFitter.__init__(self, ["A", "x_0", "s_x", "y_0", "s_y", "off"], data)
 
-        cache_ex = np.empty(data.shape[1], dtype=float)
-        cache_ey = np.empty(data.shape[0], dtype=float)
+        cache_ex = np.empty(data.shape[1], dtype = DEFAULT_TYPE_NPY)
+        cache_ey = np.empty(data.shape[0], dtype = DEFAULT_TYPE_NPY)
         self.cache = (cache_ex, cache_ey)
     
     def guess(self):
