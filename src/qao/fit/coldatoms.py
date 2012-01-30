@@ -13,22 +13,22 @@ opt_args = {"extra_compile_args": __compiler_args,
 DEFAULT_TYPEDEFC = "typedef {0} float_type;\n".format(DEFAULT_TYPE_C)
 
 
-class Parab2D(LevmarFitter):
+class ThomasFermi2D(LevmarFitter):
     r"""
-    Fitter for a two-dimensional parabola.
+    Fitter for a two-dimensional Thomas Fermi profile.
     
     The data to be fitted is interpreted as rectangular image,
-    given by a 2d-ndarray. The parabola is aligned to the x and y axis.
+    given by a 2d-ndarray. The function is aligned to the x and y axis.
     
-    .. math:: f(x, y) = \max\left[A - \frac{(x-x_0)^2}{2 a_x^2} - \frac{(x-x_0)^2}{2 a_x^2} , 0 \right] + \text{off}
+    .. math:: f(x, y) = A\cdot\max\left[1. - \frac{(x-x_0)^2}{r_x^2} - \frac{(y-y_0)^2}{r_y^2} , 0 \right]^\frac{3}{2} + \text{off}
     
-    The order of the fit parameters is (A, x_0, a_x, y_0, a_y, off). 
+    The order of the fit parameters is (A_t, x_0, r_x, y_0, r_y, off). 
     
     :param data: (ndarray) Image to be fitted.
     """
         
     def __init__(self, data):
-        LevmarFitter.__init__(self, ["A", "x_0", "a_x", "y_0", "a_y", "off"], data)
+        LevmarFitter.__init__(self, ["A_t", "x_0", "r_x", "y_0", "r_y", "off"], data)
         
         cache_x = np.empty(data.shape[1], dtype=float)
         cache_y = np.empty(data.shape[0], dtype=float)
@@ -51,31 +51,31 @@ class Parab2D(LevmarFitter):
         nx, ny = self.cache[0].size, self.cache[1].size
         amp = 0.5 * (pars_x[0]/G(pars_y, ny-1)+pars_y[0]/G(pars_x, nx-1));
         x_0 = pars_x[1]
-        s_x = pars_x[2]
+        r_x = pars_x[2] * 2.
         y_0 = pars_y[1]
-        s_y = pars_y[2]
+        r_y = pars_y[2] * 2.
         off = 0.5 * (pars_x[3]/(ny-1) + pars_y[3]/(nx-1))
-        return np.asfarray((amp, x_0, s_x, y_0, s_y, off))
+        return np.asfarray((amp, x_0, r_x, y_0, r_y, off))
     
     f_code = DEFAULT_TYPEDEFC + """
     const int nx = Ncache_x[0];
     const int ny = Ncache_y[0];
-    const float_type inv_ax_2 = 1. / p[2] / p[2];
-    const float_type inv_ay_2 = 1. / p[4] / p[4];
+    const float_type inv_rx_2 = 1. / p[2] / p[2];
+    const float_type inv_ry_2 = 1. / p[4] / p[4];
 
     // cache values
     for (int ix = 0; ix < nx; ++ix) {
         float_type dist = ix-p[1];
-        cache_x[ix] = .5*inv_ax_2*dist*dist;
+        cache_x[ix] = inv_rx_2*dist*dist;
     }
     for (int iy = 0; iy < ny; ++iy) {
         float_type dist = iy-p[3];
-        cache_y[iy] = .5*inv_ay_2*dist*dist;
+        cache_y[iy] = inv_ry_2*dist*dist;
     }
     // calc f
     for (int iy = 0; iy < ny; ++iy) {
         for (int ix = 0; ix < nx; ++ix) {
-            f[nx*iy+ix] = fmax(p[0] - cache_x[ix] - cache_y[iy], 0.0) + p[5];
+            f[nx*iy+ix] = p[0]*pow(fmax(1. - cache_x[ix] - cache_y[iy], 0.0), 3./2.) + p[5];
         }
     }
     """
@@ -90,21 +90,17 @@ class Parab2D(LevmarFitter):
     const int nx = Ncache_x[0];
     const int ny = Ncache_y[0];
     const int n = nx * ny;
-    const float_type invax = 1. / p[2];
-    const float_type invay = 1. / p[4];
-    const float_type inv_ax_2 = invax * invax;
-    const float_type inv_ay_2 = invay * invay;
-    const float_type inv_ax_3 = inv_ax_2 * invax;
-    const float_type inv_ay_3 = inv_ay_2 * invay;
+    const float_type invrx = 1. / p[2];
+    const float_type invry = 1. / p[4];
 
     // cache values
     for (int ix = 0; ix < nx; ++ix) {
-        float_type dist = ix-p[1];
-        cache_x[ix] = .5*inv_ax_2*dist*dist;
+        float_type distx = ix-p[1];
+        cache_x[ix] = distx*invrx*invrx;
     }
     for (int iy = 0; iy < ny; ++iy) {
-        float_type dist = iy-p[3];
-        cache_y[iy] = .5*inv_ay_2*dist*dist;
+        float_type disty = iy-p[3];
+        cache_y[iy] = disty*invry*invry;
     }
     // calc f and jacobian
     #pragma omp parallel for
@@ -113,15 +109,17 @@ class Parab2D(LevmarFitter):
         
         for (int ix = 0; ix < nx; ++ix) {
             const float_type distx = ix-p[1];
-            const float_type is_inside = (float) (p[0] > (cache_x[ix] + cache_y[iy]));
             const int ind = nx*iy+ix;
             
-            f[ind] = (p[0] - cache_x[ix] - cache_y[iy]) * is_inside + p[5];
-            J[ind] = is_inside;
-            J[ind+1*n] = distx * inv_ax_2 * is_inside;
-            J[ind+2*n] = distx * distx * inv_ax_3 * is_inside;
-            J[ind+3*n] = disty * inv_ay_2 * is_inside;
-            J[ind+4*n] = disty * disty * inv_ay_3 * is_inside;
+            const float_type is_inside_p = (float_type) ((distx*cache_x[ix] + disty*cache_y[iy]) < 1.);
+            const float_type parab_sqrt = sqrt(1. - distx*cache_x[ix] - disty*cache_y[iy]) * is_inside_p;
+            
+            f[ind] = p[0]*parab_sqrt*parab_sqrt*parab_sqrt + p[5];
+            J[ind] = parab_sqrt*parab_sqrt*parab_sqrt;
+            J[ind+1*n] = p[0]*3.*cache_x[ix] * parab_sqrt;
+            J[ind+2*n] = p[0]*3.*distx*cache_x[ix]*invrx * parab_sqrt;
+            J[ind+3*n] = p[0]*3.*cache_y[iy] * parab_sqrt;
+            J[ind+4*n] = p[0]*3.*disty*cache_y[iy]*invry * parab_sqrt;
             J[ind+5*n] = 1.0;
         }
     }
@@ -142,31 +140,29 @@ class Bimodal2D(LevmarFitter):
     r"""
     Fitter for a two-dimensional bimodal distribution.
     
-    A bimodal distribution is the combination of a parabola and a gaussian
+    A bimodal distribution is the combination of a thomas fermi and a gaussian
     function. The data to be fitted is interpreted as rectangular image,
     given by a 2d-ndarray. The functions are aligned to the x and y axis.
     
     .. math::
     
-        p(x, y) = \max\left[A_p - \frac{(x-x_0)^2}{2 a_x^2} - \frac{(x-x_0)^2}{2 a_x^2} , 0 \right]
+        t(x, y) = A_t\cdot\max\left[1 - \frac{(x-x_0)^2}{2 r_x^2} - \frac{(y-y_0)^2}{2 r_y^2} , 0 \right]^\frac{3}{2}
         
         g(x, y) = A_g\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma_x^2}-\frac{(y-y_0)^2}{2 \sigma_y^2}\right]
         
-        \text{bimodal}(x, y) = p(x, y) + g(x, y) + \text{off}
+        \text{bimodal}(x, y) = t(x, y) + g(x, y) + \text{off}
     
-    The order of the fit parameters is (A_p, A_g, x_0, a_x, s_x, y_0, a_y, s_y, off). 
+    The order of the fit parameters is (A_t, A_g, x_0, r_x, s_x, y_0, r_y, s_y, off). 
     
     :param data: (ndarray) Image to be fitted.
     """
         
     def __init__(self, data):
-        LevmarFitter.__init__(self, ["A_p", "A_g", "x_0", "a_x", "s_x", "y_0", "a_y", "s_y", "off"], data)
+        LevmarFitter.__init__(self, ["A_t", "A_g", "x_0", "r_x", "s_x", "y_0", "r_y", "s_y", "off"], data)
         
         cache_ex = np.empty(data.shape[1], dtype=float)
         cache_ey = np.empty(data.shape[0], dtype=float)
-        cache_px = np.empty(data.shape[1], dtype=float)
-        cache_py = np.empty(data.shape[0], dtype=float)
-        self.cache = (cache_ex, cache_ey, cache_px, cache_py)
+        self.cache = (cache_ex, cache_ey)
     
     def guess(self):
         # fit projection to x and y direction
@@ -195,21 +191,19 @@ class Bimodal2D(LevmarFitter):
     const int nx = Ncache_ex[0];
     const int ny = Ncache_ey[0];
     const int n = nx * ny;
-    const float_type invax = 1. / p[3];
+    const float_type invrx = 1. / p[3];
     const float_type invsx = 1. / p[4];
-    const float_type invay = 1. / p[6];
+    const float_type invry = 1. / p[6];
     const float_type invsy = 1. / p[7];
 
     // cache exp values
     for (int ix = 0; ix < nx; ++ix) {
         float_type dist = ix-p[2];
         cache_ex[ix] = exp(-.5*invsx*invsx*dist*dist);
-        cache_px[ix] = .5*invax*invax*dist*dist;
     }
     for (int iy = 0; iy < ny; ++iy) {
         float_type dist = iy-p[5];
         cache_ey[iy] = exp(-.5*invsy*invsy*dist*dist);
-        cache_py[iy] = .5*invay*invay*dist*dist;
     }
     // calc f and jacobian
     #pragma omp parallel for
@@ -217,20 +211,22 @@ class Bimodal2D(LevmarFitter):
         const float_type disty = iy-p[5];
         
         for (int ix = 0; ix < nx; ++ix) {
-            const float_type distx = ix-p[2];
-            const float_type is_inside_p = (float) (p[0] > (cache_px[ix] + cache_py[iy]));
-            const float_type gauss = p[1] * cache_ex[ix] * cache_ey[iy];
-            const float_type parab = (p[0] - cache_px[ix] - cache_py[iy]) * is_inside_p;
             const int ind = nx*iy+ix;
+            const float_type distx = ix-p[2];
             
-            f[ind] = gauss + parab + p[8];
-            J[ind] = is_inside_p;
+            const float_type gauss = p[1] * cache_ex[ix] * cache_ey[iy];
+            
+            const float_type is_inside_p = (float_type) ((distx*distx*invrx*invrx + disty*disty*invry*invry) < 1.);
+            const float_type parab_sqrt = sqrt(1. - distx*distx*invrx*invrx - disty*disty*invry*invry) * is_inside_p;
+            
+            f[ind] = gauss + p[0]*parab_sqrt*parab_sqrt*parab_sqrt + p[8];
+            J[ind] = parab_sqrt*parab_sqrt*parab_sqrt;
             J[ind+1*n] = cache_ex[ix] * cache_ey[iy];
-            J[ind+2*n] = distx*invax*invax*is_inside_p + distx*invsx*invsx*gauss;
-            J[ind+3*n] = distx*distx*invax*invax*invax * is_inside_p;
+            J[ind+2*n] = p[0]*3.*distx*invrx*invrx*parab_sqrt + distx*invsx*invsx*gauss;
+            J[ind+3*n] = p[0]*3.*distx*distx*invrx*invrx*invrx * parab_sqrt;
             J[ind+4*n] = distx*distx*invsx*invsx*invsx * gauss;
-            J[ind+5*n] = disty*invay*invay*is_inside_p + disty*invsy*invsy*gauss;
-            J[ind+6*n] = disty*disty*invay*invay*invay * is_inside_p;
+            J[ind+5*n] = p[0]*3.*disty*invry*invry*parab_sqrt + disty*invsy*invsy*gauss;
+            J[ind+6*n] = p[0]*3.*disty*disty*invry*invry*invry * parab_sqrt;
             J[ind+7*n] = disty*disty*invsy*invsy*invsy * gauss;
             J[ind+8*n] = 1.0;
         }
@@ -239,15 +235,16 @@ class Bimodal2D(LevmarFitter):
     
     def fJ(self, pars):
         f, J = self._f, self._J
-        cache_ex, cache_ey, cache_px, cache_py = self.cache
+        cache_ex, cache_ey = self.cache
         p = pars
-        weave.inline(self.fJ_code, ["f", "J", "cache_ex", "cache_ey", "cache_px", "cache_py", "p"], **opt_args)
+        weave.inline(self.fJ_code, ["f", "J", "cache_ex", "cache_ey", "p"], **opt_args)
 
     def sanitizePars(self, pars):
         pars[[3,4,6,7]] = np.abs(pars[[3,4,6,7]])
         return pars
 
 if __name__ == "__main__":
+    import time
         
     def gauss1d(x, pars):
         A, x0, sx, off = pars        
@@ -271,7 +268,9 @@ if __name__ == "__main__":
     fitter.verbose = False
     pars_ini = fitter.guess()
     data_ini = fitter.getFitData(pars_ini)
+    t_start = time.time()
     pars_fit = fitter.fit(pars_ini)
+    print "%.2f ms for fit" % ((time.time() - t_start)*1e3)
     data_fit = fitter.getFitData(pars_fit)
     
     print fitter.getFitLog()

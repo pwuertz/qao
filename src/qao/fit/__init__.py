@@ -12,7 +12,7 @@ which can be also imported from :mod:`qao.fit`.
 * :class:`qao.fit.gauss.Gauss1D`
 * :class:`qao.fit.gauss.Gauss2D`
 * :class:`qao.fit.gauss.Gauss2DRot`
-* :class:`qao.fit.coldatoms.Parab2D`
+* :class:`qao.fit.coldatoms.ThomasFermi2D`
 * :class:`qao.fit.coldatoms.Bimodal2D`
 
 An already instanced fitter can be reused to fit another set of data. This can
@@ -60,7 +60,7 @@ A small class for multiprocessing application of fitters is implemented in :clas
 """
 
 from gauss import Gauss1D, Gauss2D, Gauss2DRot
-from coldatoms import Parab2D, Bimodal2D
+from coldatoms import ThomasFermi2D, Bimodal2D
 from fitter import FitJob
 
 if __name__ == '__main__':
