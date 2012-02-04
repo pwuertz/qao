@@ -206,6 +206,7 @@ class LevmarFitter(object):
         k = 0; nu = 2
         mu = tau * max(np.diag(A))
         self.stop = np.linalg.norm(g, np.Inf) < eps1
+        self.reason = "small gradient"
         while not self.stop and k < kmax:
             k += 1
     
@@ -248,7 +249,7 @@ class LevmarFitter(object):
                 print "step %2d: |f|: %9.6g mu: %8.3g rho: %8.3g" % (k, np.linalg.norm(self._f), mu, rho)
     
         else:
-            self.reason = "max iter reached"
+            if not self.reason: self.reason = "max iter reached"
     
         if verbose:
             print self.reason
@@ -277,10 +278,13 @@ class LevmarFitter(object):
         
         errsq = np.linalg.norm(self._f)**2 # sum square residuum
         sigma = np.sqrt(errsq / (N - m))   # estimated standard deviation
+        
+        try:
+            diag = np.diagonal(np.linalg.inv(np.inner(self._J, self._J)))
+            pars_err = np.sqrt(diag) * sigma * scipy.stats.t.ppf(1 - alpha / 2, N - m)
+        except:
+            pars_err = pars * np.inf
             
-        diag = np.diagonal(np.linalg.inv(np.inner(self._J, self._J)))
-        pars_err = np.sqrt(diag) * sigma * scipy.stats.t.ppf(1 - alpha / 2, N - m);
-    
         return pars_err
     
     def guess(self):
