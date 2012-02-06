@@ -159,6 +159,7 @@ class LevmarFitter(object):
         
         :param pars_guess: (ndarray) Start parameters for fitting. If None, guess from data.
         :param callback: (callable) Callback function.
+        :returns: (ndarray) Fit parameters + optional fit dictionary.
         """
         if pars_guess is None:
             pars_guess = self.guess()
@@ -403,22 +404,24 @@ class LevmarFitter(object):
         """
         return self.__estError(self.pars_fit)        
     
-    def getFitParsDict(self):
+    def getFitParsDict(self, errors = True):
         """
         Return the best fit parameters as dictionary.
         
         The dictionary will contain the names of the fit
         parameters, their estimated best fit values and
-        the estimated error of the parameter.
-                         
+        the estimated error of the parameter (unless you
+        decide not to include estimated errors).
+        
+        :param errors: (bool) Include estimated errors.
         :returns: (dict) Best fit parameters.
         """
-        pars_err = self.getFitErr()
+        if errors: pars_err = self.getFitErr()
         
         result = dict()
         for i, name in enumerate(self.pars_name):
             result[name] = self.pars_fit[i]
-            result[name+"_err"] = pars_err[i]
+            if errors: result[name+"_err"] = pars_err[i]
         
         return result
     
