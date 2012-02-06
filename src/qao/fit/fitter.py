@@ -136,7 +136,7 @@ class LevmarFitter(object):
             raise ValueError("Shape mismatch. Expected dimensions %s." % self.data.shape) 
         self.data = data
     
-    def fit(self, pars_guess = None, tau = 1e-2, eps1 = 1e-6, eps2 = 1e-6, kmax = 50, return_dict = False):
+    def fit(self, pars_guess = None, tau = 1e-2, eps1 = 1e-6, eps2 = 1e-6, kmax = 50, return_dict = False, callback = None):
         """
         Fit the data currently assigned to the fitter.
         
@@ -147,7 +147,18 @@ class LevmarFitter(object):
         number of iterations and reason for stopping can be retrieved
         from :func:`getFitLog`.
         
-        :param pars_guess: (ndarray) Start parameters for fitting. If None, guess from data.  
+        A callback function can be provided to monitor or cancel the fit process. It
+        takes the iteration number as argument and must return a bool indicating if
+        the fitter should continue its work.
+        
+        Simple callback function::
+        
+            def callback(k):
+                print "Iteration at", k
+                return True
+        
+        :param pars_guess: (ndarray) Start parameters for fitting. If None, guess from data.
+        :param callback: (callable) Callback function.
         """
         if pars_guess is None:
             pars_guess = self.guess()
@@ -155,7 +166,7 @@ class LevmarFitter(object):
         if len(pars_guess) != len(self.pars_name):
             raise ValueError("Invalid number of guess parameters.")
         
-        pars_fit, fit_dict = self.__LM(pars_guess, tau, eps1, eps2, kmax, verbose = self.verbose, return_dict = True)
+        pars_fit, fit_dict = self.__LM(pars_guess, tau, eps1, eps2, kmax, verbose = self.verbose, return_dict = True, callback = callback)
         self.pars_fit[:] = self.sanitizePars(pars_fit)
         if return_dict:
             return self.pars_fit[:], fit_dict
@@ -188,9 +199,17 @@ class LevmarFitter(object):
             self._J[i, :] *= 1./(2*delta)
     
     def __LM(self, pars, tau = 1e-2, eps1 = 1e-6, eps2 = 1e-6, kmax = 50,
-           verbose = False, return_dict = False):
+           verbose = False, return_dict = False, callback = None):
         """Implementation of the Levenberg-Marquardt algorithm in pure
         Python. Solves the normal equations."""
+        
+        # if no callback was provided, provide simply True
+        if callback is None:
+            callback = lambda k: True
+        
+        # process control
+        stop_reason = ""
+        stop = False
         
         # get pars, create cache
         pars = np.asfarray(pars, dtype = DEFAULT_TYPE_NPY)
@@ -202,24 +221,26 @@ class LevmarFitter(object):
         A = np.inner(self._J, self._J)
         g = np.inner(self._J, self._f)
         I = np.eye(pars.size)
-    
+        
         k = 0; nu = 2
         mu = tau * max(np.diag(A))
-        self.stop = np.linalg.norm(g, np.Inf) < eps1
-        self.reason = "small gradient"
-        while not self.stop and k < kmax:
+        if np.linalg.norm(g, np.Inf) < eps1:
+            stop = True
+            stop_reason = "small gradient"
+
+        while not stop and k < kmax and callback(k):
             k += 1
     
             try:
                 d = np.linalg.solve( A + mu*I, -g)
             except np.linalg.LinAlgError:
-                self.stop = True
-                self.reason = 'singular matrix'
+                stop = True
+                stop_reason = "singular matrix"
                 break
     
             if np.linalg.norm(d) < eps2*(np.linalg.norm(pars) + eps2):
-                self.stop = True
-                self.reason = 'small step'
+                stop = True
+                stop_reason = "small step"
                 break
     
             pars_new = pars + d
@@ -235,9 +256,9 @@ class LevmarFitter(object):
                 pars = pars_new
                 A = np.inner(self._J, self._J)
                 g = np.inner(self._J, self._f)
-                if (np.linalg.norm(g, np.Inf) < eps1): # or norm(fnew) < eps3):
-                    self.stop = True
-                    self.reason = "small gradient"
+                if (np.linalg.norm(g, np.Inf) < eps1):
+                    stop = True
+                    stop_reason = "small gradient"
                     break
                 mu = mu * max([1.0/3, 1.0 - (2*rho - 1)**3])
                 nu = 2.0
@@ -247,23 +268,24 @@ class LevmarFitter(object):
     
             if verbose:
                 print "step %2d: |f|: %9.6g mu: %8.3g rho: %8.3g" % (k, np.linalg.norm(self._f), mu, rho)
-    
+                
         else:
-            if not self.reason: self.reason = "max iter reached"
+            if not stop_reason and k == kmax:
+                stop_reason = "max iter reached"
+            else:
+                stop_reason = "user abort"
     
         if verbose:
-            print self.reason
+            print stop_reason
         
-        self.fit_log = {"iter": k, "reason": self.reason}
+        self.fit_log = {"iter": k,
+                        "reason": stop_reason,
+                        "success": stop_reason in ["small gradient", "small step"]}
         
         if return_dict:
             return pars, self.fit_log
         else:
             return pars
-    
-    def abort(self):
-        self.reason = "user abort"
-        self.stop = True
 
     def __estError(self, pars):
         """
