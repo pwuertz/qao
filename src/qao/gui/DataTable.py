@@ -537,7 +537,7 @@ class DataTableView(QtGui.QTableView):
     default_path     = ""
     default_path_tpl = ""
     
-    def __init__(self, dataTable = None):
+    def __init__(self, dataTable=None, dataTablePlot=None):
         QtGui.QTableView.__init__(self)
         if not dataTable: dataTable = DataTable()
         
@@ -550,7 +550,10 @@ class DataTableView(QtGui.QTableView):
         header.setMovable(True)
         
         # add plot window
-        self.plotWidget = DataTablePlot(dataTable)
+        if dataTablePlot is None:
+            self.plotWidget = DataTablePlot(dataTable)
+        else:
+            self.plotWidget = dataTablePlot
         self.setDataTable(dataTable)
     
     def saveTemplate(self, fname):
@@ -741,7 +744,7 @@ class DataTableView(QtGui.QTableView):
         actionShowCol = QtGui.QAction("Show Columns", None)
         actionShowCol.triggered.connect(self.showColumnDialog)
         actionShowPlot = QtGui.QAction("Show Plot", None)
-        actionShowPlot.triggered.connect(self.plotWidget.show)
+        actionShowPlot.triggered.connect(self.plotWidget.showNormal)
         def addColFunc():
             name, ok = QtGui.QInputDialog.getText(self, "Add Column", "Name:")
             if ok: self.dataTable.addColumns([str(name)])
@@ -790,10 +793,12 @@ class DataTablePlot(MatplotlibWidget):
     Widget for plotting columns of a :class:`DataTableView`.
     """
     
-    def __init__(self, dataTable):
+    def __init__(self, dataTable = None):
         MatplotlibWidget.__init__(self)
-        self.setWindowFlags(QtCore.Qt.Tool)
-        self.setDataTable(dataTable)
+        if dataTable is not None:
+            self.setDataTable(dataTable)
+        else:
+            self.dataTable = None
     
     def setDataTable(self, dataTable):
         # disconnect from previous table
@@ -827,7 +832,8 @@ class DataTablePlot(MatplotlibWidget):
         self.dataTable.setGroupBy(col, enable)
     
     def setupPlotData(self):
-        if self.isHidden(): return
+        if self.isMinimized() or self.isHidden() or self.dataTable is None:
+            return
         # get selected x and y column numbers
         try:
             colX = self.dataTable.searchFlag("plotX")[0]
@@ -881,6 +887,9 @@ class DataTableTabs(QtGui.QTabWidget):
     Tabbed view of multiple DataTables. Adding more functionality for interacting
     with DataTables.
     """
+    tableAdded = QtCore.pyqtSignal(str, DataTableView)
+    tableRemoved = QtCore.pyqtSignal(DataTableView)
+    
     def __init__(self, default_id_key = None):
         QtGui.QTabWidget.__init__(self)
         self.setTabsClosable(True)
@@ -909,6 +918,7 @@ class DataTableTabs(QtGui.QTabWidget):
         self.addTab(tableView, name)
         self.setCurrentIndex(self.count()-1)
         self.setActiveTable(self.count()-1)
+        self.tableAdded.emit(name, tableView)
         return tableView
     
     def setActiveTable(self, tab):
@@ -924,6 +934,14 @@ class DataTableTabs(QtGui.QTabWidget):
         self.setTabText(tab, str(self.tabText(tab))+"*")
         self.activeTable = tableView
     
+    def getActiveTable(self):
+        """
+        Return the currently active table.
+        
+        :returns: (object)
+        """
+        return self.activeTable
+    
     def handleTabClose(self, tab):
         tableView = self.widget(tab)
         if tableView.dataTable._modified:
@@ -937,6 +955,7 @@ class DataTableTabs(QtGui.QTabWidget):
                 pass
 
         tableView.setParent(None)
+        self.tableRemoved.emit(tableView)
         if self.count() == 0: self.newTable("results")
         self.setActiveTable(self.count()-1)
         

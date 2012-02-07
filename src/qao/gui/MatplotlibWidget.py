@@ -98,6 +98,7 @@ class MatplotlibWidget(QtGui.QWidget):
         self._needSetupFigure = True
     
     def resizeEvent(self, event):
+        if self.isMinimized() or self.isHidden(): return
         w, h = event.size().width(), event.size().height()
         self.fig.subplots_adjust(left = 30./w, right = 1-5./w, top = 1-5./h, bottom = 50./h, hspace = 70./h)
         

@@ -124,7 +124,9 @@ class MessageBusClient(QtCore.QObject):
         :param timeout: (int) Connection timeout in milliseconds.
         """
         self.connection.connectToHost(host, port)
-        if not self.connection.waitForConnected(timeout): raise Exception("no connection to event server")
+        if not self.connection.waitForConnected(timeout):
+            self.disconnected.emit()
+            raise Exception("no connection to event server")
     
     def disconnectFromServer(self):
         """
