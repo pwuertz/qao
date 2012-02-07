@@ -40,7 +40,7 @@ class Gauss1D(LevmarFitter):
         x0  = (np.arange(data.size) * data).sum() * (1./dsum)
         var = ((np.arange(data.size)-x0)**2 * data).sum() * (1./dsum)
         # return guess
-        return np.asfarray([dmax, x0, np.sqrt(var), dmin], dtype = DEFAULT_TYPE_NPY)
+        return np.asfarray([dmax, x0, np.sqrt(abs(var)), dmin], dtype = DEFAULT_TYPE_NPY)
     
     f_code = DEFAULT_TYPEDEFC + """
     const int n = Nf[0];
