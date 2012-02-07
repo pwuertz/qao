@@ -170,9 +170,9 @@ class LevmarFitter(object):
         pars_fit, fit_dict = self.__LM(pars_guess, tau, eps1, eps2, kmax, verbose = self.verbose, return_dict = True, callback = callback)
         self.pars_fit[:] = self.sanitizePars(pars_fit)
         if return_dict:
-            return self.pars_fit[:], fit_dict
+            return self.pars_fit.copy(), fit_dict
         else:
-            return self.pars_fit[:]
+            return self.pars_fit.copy()
     
     def sanitizePars(self, pars):
         """
