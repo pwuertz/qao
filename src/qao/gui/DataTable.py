@@ -496,10 +496,22 @@ class DataTableModel(QtCore.QAbstractTableModel):
         
         if not index.isValid():
             return QtCore.QVariant()
-        elif (role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole) and not isBool:
+        elif (role == QtCore.Qt.DisplayRole) and not isBool:
             val = self.dataTable[row, col]
-            if val != None: return str(val)
-            else: return None
+            if type(val) == float:
+                return format(val, ".4g")
+            elif val is None:
+                return None
+            else:
+                return str(val)
+        elif (role == QtCore.Qt.EditRole) and not isBool:
+            val = self.dataTable[row, col]
+            if type(val) == float:
+                return "%g" % val
+            elif val is None:
+                return None
+            else:
+                return str(val)
         elif role == QtCore.Qt.BackgroundRole:
             return QtCore.QVariant() #return QtGui.QColor("gray")
         elif role == QtCore.Qt.DecorationRole:
@@ -1004,7 +1016,7 @@ if __name__ == "__main__":
     base = int(time.time())
     for i in range(12):
         g = i % 4
-        data_dict = {MY_ID_KEY: i, "b": i**2 + 10*g, "g": g}
+        data_dict = {MY_ID_KEY: i, "b": i**(2./3.) + 10*g, "g": g}
         dataTable.insertData(data_dict)
     dataTable.setFlag(0, "plotX")
     dataTable.setFlag(3, "plotY")
