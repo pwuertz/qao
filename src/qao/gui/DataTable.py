@@ -10,6 +10,7 @@ import time
 import os
 import csv
 import numpy as np
+import math
 from PyQt4 import QtGui, QtCore
 
 from MatplotlibWidget import MatplotlibWidget
@@ -220,11 +221,18 @@ class DataTable(QtCore.QObject):
         Not to be called from outside.
         """
         self._modified = True
-        # evaluate dynamic expressions for each row
         colNames = self.colInfo["name"].tolist()
+        # create functions for calculating means
+        mean_dict = {}
+        for i in range(len(colNames)):
+            def meanfuncgen(i):
+                return lambda n: np.mean(self.data[(row+1-n):(row+1), i])
+            mean_dict["mean_%s"%colNames[i]] = meanfuncgen(i)
+        # evaluate dynamic expressions for each row
         for row in rows:
             # build value dictionary for this row
-            valuedict = dict()
+            valuedict = {"math": math}
+            valuedict.update(mean_dict)
             for key, val in zip(colNames, self.data[row].tolist()):
                 valuedict[key.replace(' ', '_')] = val
             # evaluate each dynamic expression
@@ -486,7 +494,7 @@ class DataTableModel(QtCore.QAbstractTableModel):
         #    return QtGui.QIcon()
         
         if orientation == QtCore.Qt.Vertical and role == QtCore.Qt.DisplayRole:
-            return " "
+            return str(section+1)
         
         return QtCore.QVariant()
  
