@@ -222,17 +222,17 @@ class DataTable(QtCore.QObject):
         """
         self._modified = True
         colNames = self.colInfo["name"].tolist()
-        # create functions for calculating means
-        mean_dict = {}
+        # create basic dict for eval
+        base_dict = {"math": math}
         for i in range(len(colNames)):
             def meanfuncgen(i):
                 return lambda n: np.mean(self.data[(row+1-n):(row+1), i])
-            mean_dict["mean_%s"%colNames[i]] = meanfuncgen(i)
+            base_dict["mean_%s"%colNames[i]] = meanfuncgen(i)
         # evaluate dynamic expressions for each row
         for row in rows:
             # build value dictionary for this row
-            valuedict = {"math": math}
-            valuedict.update(mean_dict)
+            valuedict = base_dict.copy()
+            valuedict["row"] = row+1
             for key, val in zip(colNames, self.data[row].tolist()):
                 valuedict[key.replace(' ', '_')] = val
             # evaluate each dynamic expression
@@ -556,6 +556,16 @@ class DataTableView(QtGui.QTableView):
         header.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         header.customContextMenuRequested.connect(self.headerContextMenu)
         header.setMovable(True)
+        
+        # check if user scrolled to the end
+        self.scroll_to_end = True
+        def onValueChanged(v):
+            self.scroll_to_end = (v == self.verticalScrollBar().maximum())
+        def onRangeChanged(vmin, vmax):
+            if self.scroll_to_end:
+                self.verticalScrollBar().setSliderPosition(vmax)
+        self.verticalScrollBar().valueChanged.connect(onValueChanged)
+        self.verticalScrollBar().rangeChanged.connect(onRangeChanged)
         
         # add plot window
         if dataTablePlot is None:
@@ -1024,5 +1034,15 @@ if __name__ == "__main__":
     tabs.newTable("test 1", DataTableView(dataTable))
     tabs.newTable("test 2", DataTableView(dataTable))
     tabs.show()
+    
+    # create new data on doubleclick
+    def createData():
+        global i
+        i += 1
+        g = i % 4
+        data_dict = {MY_ID_KEY: i, "b": i**2 + 10*g, "g": g}
+        dataTable.insertData(data_dict)
+    tabs.widget(0).doubleClicked.connect(createData)
+    tabs.widget(1).doubleClicked.connect(createData)
 
     app.exec_()
