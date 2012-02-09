@@ -506,7 +506,6 @@ class DataTableModel(QtCore.QAbstractTableModel):
             return QtCore.QVariant()
         elif (role == QtCore.Qt.DisplayRole) and not isBool:
             val = self.dataTable[row, col]
-            print type(val)
             if issubclass(type(val), float):
                 return format(val, ".4g")
             elif val is None:
