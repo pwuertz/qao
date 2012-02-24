@@ -6,21 +6,172 @@ The :mod:`DataTable` module contains classes for acquiring and storing data
 of various types in a single table-like structure.
 """
 
+ID_KEY_DEFAULT = "id"
+
 import time
 import os
 import csv
 import numpy as np
 import math
+import ast
+import re
 from PyQt4 import QtGui, QtCore
 
 from MatplotlibWidget import MatplotlibWidget
 
-ID_KEY_DEFAULT = "id"
+##########################################################################################
+# Tools for working with expressions
+
+class ExpressionFuncTransform(ast.NodeTransformer):
+    """
+    Manipulates the AST of parsed user expressions (only intended for internal use).
+    
+    This transformer changes function calls like ``mean_column(5)`` to method
+    calls of array slices like ``data[i-5-1:i+1, col].mean()``.
+    """
+    functions = ["min", "max", "mean", "sum"]
+    rex = re.compile("^(?P<func>%s)_(?P<name>.+)" % "|".join(functions))
+
+    def __init__(self, column_names, array_name = "data", row_name = "i"):
+        ast.NodeTransformer.__init__(self)
+        self.column_names = column_names
+        self.array_name = array_name
+        self.row_name = row_name
+
+    def visit_Call(self, node):
+        # check if the function should be handled
+        m = self.rex.match(node.func.id)
+        if not m:
+            return node
+        if m.group("name") not in self.column_names:
+            return node
+        
+        # determine function arguments
+        func_name = m.group("func")
+        col = self.column_names.index(m.group("name"))
+        if (len(node.args) > 0) and node.args[0].n > 0:
+            n = node.args[0].n
+            lower = ast.Call(func=ast.Name(id='max', ctx=ast.Load()), keywords=[],
+                             args=[ast.BinOp(ast.Name(id=self.row_name, ctx=ast.Load()), ast.Sub(), ast.Num(n-1)), ast.Num(0)],
+                             starargs=None, kwargs=None)
+        else:
+            lower = None
+        
+        # code for array lookup and slicing
+        row_index = ast.Slice(lower=lower,
+                              upper=ast.BinOp(ast.Name(id=self.row_name, ctx=ast.Load()), ast.Add(), ast.Num(1)),
+                              step=None)
+        col_index = ast.Index(value=ast.Num(col))
+        subarray = ast.Subscript(value=ast.Name(id=self.array_name, ctx=ast.Load()),
+                                 slice=ast.ExtSlice(dims=[row_index, col_index]),
+                                 ctx=ast.Load())
+        # code for calling the array method
+        method = ast.Attribute(value=subarray, attr=func_name, ctx=ast.Load())
+        node_new = ast.Call(func=method, args=[], keywords=[],
+                            starargs=None, kwargs=None)        
+        return ast.copy_location(node_new, node)
+
+class ExpressionValueTransform(ast.NodeTransformer):
+    """
+    Manipulates the AST of parsed user expressions (only intended for internal use).
+    
+    This transformer changes references to names like ``column`` to array
+    lookups like ``data[i, col]``.
+    """
+    def __init__(self, column_names, array_name = "data", row_name = "i"):
+        ast.NodeTransformer.__init__(self)
+        self.column_names = column_names
+        self.array_name = array_name
+        self.row_name = row_name
+
+    def visit_Name(self, node):
+        if node.id not in self.column_names:
+            return node
+        
+        # replace reference with table lookup
+        col = self.column_names.index(node.id)
+        index = ast.Tuple(elts=[ast.Name(id=self.row_name, ctx=ast.Load()),
+                                ast.Num(n=col)], ctx=ast.Load())
+        node_new = ast.Subscript(value=ast.Name(id=self.array_name, ctx=ast.Load()),
+                                 slice=ast.Index(value=index), ctx=ast.Load())
+        return ast.copy_location(node_new, node)
+
+class DependencySolver(ast.NodeVisitor):
+    """
+    Analyzes the AST of parsed user expressions (only intended for internal use).
+    
+    Find occurrences of given names within parsed expressions and solves the
+    expression network.
+    
+    Example::
+
+        names = ["col1", "col2", "col3"]
+        expressions = ["col3 + col2", "mean(col3, 5)", "col5"]
+        
+        solver = DependencySolver(names)
+        for name, expr in zip(names, expressions):
+            tree = ast.parse(expr, mode="eval")
+            solver.add(name, tree)
+        
+        print solver.solve()
+    """
+    def __init__(self, names):
+        ast.NodeVisitor.__init__(self)
+        self.names = names
+        self.__names_found = []
+        self.dep_dict = dict()
+    
+    def clear(self):
+        self.dep_dict = []
+        self.__names_found = []
+        
+    def visit_Name(self, node):
+        if (not self.names) or (node.id in self.names):
+            self.__names_found.append(node.id)
+    
+    def add(self, name, tree):
+        # add dependencies for `name` found in the provided AST
+        self.__names_found = []
+        self.visit(tree)
+        self.dep_dict[name] = self.__names_found
+
+    def solve(self):
+        # solves the dependency network and returnes a ordered list
+        resolved = []
+        for name in self.dep_dict.keys():
+            self.__resolve_node(name, resolved)
+        return resolved
+
+    def __resolve_node(self, name, resolved, unresolved = []):
+        if name in resolved:
+            return
+        unresolved.append(name)
+        for dep_name in self.dep_dict[name]:
+            if dep_name not in resolved:
+                if dep_name in unresolved:
+                    raise Exception('circular reference: %s -> %s' % (name, dep_name))
+                self.__resolve_node(dep_name, resolved, unresolved)
+        resolved.append(name)
+        unresolved.remove(name)
+
+##########################################################################################
+# DataTable implementations
 
 class DataTable(QtCore.QObject):
     """
-    This class provides 
+    This class implements a table for storing data.
     
+    A DataTable stores information as array of python objects for
+    maximum flexibility, while providing many features for dynamic
+    modifications and notification of changes.
+    
+    This is an overview of the features:
+    * adding/removing colums or rows
+    * mark columns by setting flags
+    * emitting qt signals on changes
+    * evaluating user provided expressions
+    * special column for text comments
+    * special column for discarding rows
     """
     
     cleared      = QtCore.pyqtSignal()
@@ -47,6 +198,9 @@ class DataTable(QtCore.QObject):
         # create empty tables
         self.colInfo = np.array([], dtype=dtColInfo)
         self.data = np.empty((0, len(self.colInfo)), dtype=object)
+        # expression cache
+        self.expression_code = dict()
+        self.expression_order = []
         # emit cleared, and add standard columns
         self.cleared.emit()
         self.addColumns([self.id_key])
@@ -100,6 +254,12 @@ class DataTable(QtCore.QObject):
             indices = np.arange(self.data.shape[0])[index]
             r_from, r_to = np.min(indices), np.max(indices)
             self.dataChanged.emit(r_from, r_to, 0, self.data.shape[1]-1)
+    
+    def isModified(self):
+        """
+        Returns True if the table was modified since the last time loading or saving it.
+        """
+        return self._modified
 
     def addColumns(self, newColNames):
         """
@@ -135,8 +295,12 @@ class DataTable(QtCore.QObject):
         :param col: (int) Index of the column to be removed.
         """
         if self.checkFlag(col, "persistent"): return
+
+        # delete column
         self.colInfo = np.delete(self.colInfo, col)
         self.data = np.delete(self.data, col, axis=1)
+        # recompile expressions
+        self.__rebuildExpressionCache()
         
         self._modified = True
         self.colRemoved.emit(col)
@@ -181,10 +345,42 @@ class DataTable(QtCore.QObject):
         if expression:
             self.setFlag(col, "dynamic")
             self.colInfo[col]["expression"] = expression
+            self.__rebuildExpressionCache()
             self.updateDynamic(row=None, col=col)
         else:
             self.setFlag(col, "dynamic", False)
             self.colInfo[col]["expression"] = ""
+            self.__rebuildExpressionCache()
+        
+    def __rebuildExpressionCache(self):
+        self.expression_code = dict()
+        self.expression_order = []
+        dynamic_cols  = self.searchFlag("dynamic")
+        dynamic_names = [self.colInfo[col]["name"] for col in dynamic_cols]
+        column_names  = self.colInfo["name"].tolist()
+        
+        solver = DependencySolver(dynamic_names)
+        transformFunc = ExpressionFuncTransform(column_names)
+        transformValue = ExpressionValueTransform(column_names)
+        # for each dynamic column, create the ast, analyze, transform and compile
+        for col, name in zip(dynamic_cols, dynamic_names):
+            try:
+                tree = ast.parse(self.colInfo[col]["expression"], mode='eval')
+                solver.add(name, tree)
+                transformFunc.visit(tree)
+                transformValue.visit(tree)
+                ast.fix_missing_locations(tree)
+                code = compile(tree, "<user expression '%s'>" % name, mode='eval')
+                self.expression_code[col] = code
+            except:
+                print "error compiling user expression for column '%s'" % name
+                self.expression_code[col] = compile("None", "<compile error>", mode='eval') 
+        # try to solve the dependency network
+        try:
+            self.expression_order = [column_names.index(name) for name in solver.solve()]
+        except Exception as e:
+            print "error evaluating expressions,", e
+            self.expression_order = dynamic_cols
     
     def updateDynamic(self, row = None, col = None):
         """
@@ -196,52 +392,43 @@ class DataTable(QtCore.QObject):
         :param row: (int) Row index.
         :param col: (int) Column index.
         """
-        # determine which cells to update
-        dynCols = self.searchFlag("dynamic")
-        if col not in dynCols: return
         if row is None:
             rows = range(self.data.shape[0])
         else:
             rows = [row]
         if col is None:
-            cols = dynCols
+            cols = self.expression_order
         else:
-            cols = [col]
-        
-        if not rows: return
+            # cols = [col] # TODO: add cols that depend on col
+            cols = self.expression_order
         
         # emit dataChanged for recalculated cells
         self._recalculateDynamic(rows, cols)
         for col in cols:
             self.dataChanged.emit(rows[0], rows[-1], col, col)
     
-    def _recalculateDynamic(self, rows, cols):
+    def _recalculateDynamic(self, rows = None, cols = None):
         """
         Internal recalculation of dynamic expressions.
         Not to be called from outside.
         """
         self._modified = True
-        colNames = self.colInfo["name"].tolist()
-        # create basic dict for eval
-        base_dict = {"math": math}
-        for i in range(len(colNames)):
-            def meanfuncgen(i):
-                return lambda n: np.mean(self.data[(row+1-n):(row+1), i])
-            base_dict["mean_%s"%colNames[i]] = meanfuncgen(i)
+        
+        if cols is None:
+            cols = self.expression_order
+        
+        # create dict for evaluation of the expressions
+        eval_dict = {"math": math, "data": self.data}
+        
         # evaluate dynamic expressions for each row
         for row in rows:
-            # build value dictionary for this row
-            valuedict = base_dict.copy()
-            valuedict["row"] = row+1
-            for key, val in zip(colNames, self.data[row].tolist()):
-                valuedict[key.replace(' ', '_')] = val
-            # evaluate each dynamic expression
+            eval_dict["i"] = row
             for col in cols:
                 try:
-                    result = eval(self.colInfo[col]["expression"], valuedict)
+                    result = eval(self.expression_code[col], eval_dict)
                 except:
                     result = None
-                self.data[row, col] = result 
+                self.data[row, col] = result
 
     def toggleFlag(self, col, flag):
         """
@@ -359,7 +546,7 @@ class DataTable(QtCore.QObject):
             self.data[row, colNames.index(key)] = val
         
         # evaluate dynamic expressions
-        self._recalculateDynamic([row], self.searchFlag("dynamic"))
+        self._recalculateDynamic([row])
         
         self._modified = True
         
@@ -974,7 +1161,7 @@ class DataTableTabs(QtGui.QTabWidget):
     
     def handleTabClose(self, tab):
         tableView = self.widget(tab)
-        if tableView.dataTable._modified:
+        if tableView.dataTable.isModified():
             buttons = QtGui.QMessageBox.Save | QtGui.QMessageBox.Discard | QtGui.QMessageBox.Cancel
             bn = QtGui.QMessageBox.question(self, "Unsaved Data", "Table contains unsaved data. Do you want to save before closing the table?", buttons=buttons, defaultButton=QtGui.QMessageBox.Save)
             if bn == QtGui.QMessageBox.Save:
@@ -1043,6 +1230,7 @@ if __name__ == "__main__":
     #dataTable.save("dump.csv")
 
     tabs = DataTableTabs()
+    tabs.resize(QtCore.QSize(600, 350))
     tabs.newTable("test 1", DataTableView(dataTable))
     tabs.newTable("test 2", DataTableView(dataTable))
     tabs.show()
