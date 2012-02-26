@@ -122,8 +122,8 @@ class DependencySolver(ast.NodeVisitor):
         self.dep_dict = dict()
     
     def clear(self):
-        self.dep_dict = []
         self.__names_found = []
+        self.dep_dict = dict()
         
     def visit_Name(self, node):
         if (not self.names) or (node.id in self.names):
@@ -135,14 +135,24 @@ class DependencySolver(ast.NodeVisitor):
         self.visit(tree)
         self.dep_dict[name] = self.__names_found
 
-    def solve(self):
-        # solves the dependency network and returnes a ordered list
+    def solve(self, name = None):
+        # solves the dependency network for given name and return
+        # a ordered list, if name=None solve for all names
         resolved = []
-        for name in self.dep_dict.keys():
-            self.__resolve_node(name, resolved)
+        if name is None:
+            # solve for all nodes
+            for name in self.dep_dict.keys():
+                self.__resolve_down(name, resolved)
+        else:
+            # check topmost nodes that depend on 'name'
+            top_nodes = []
+            self.__resolve_top_nodes(name, top_nodes)
+            # solve network for these nodes only
+            for node in top_nodes:
+                self.__resolve_down(node, resolved)
         return resolved
 
-    def __resolve_node(self, name, resolved, unresolved = []):
+    def __resolve_down(self, name, resolved, unresolved = []):
         if name in resolved:
             return
         unresolved.append(name)
@@ -150,8 +160,23 @@ class DependencySolver(ast.NodeVisitor):
             if dep_name not in resolved:
                 if dep_name in unresolved:
                     raise Exception('circular reference: %s -> %s' % (name, dep_name))
-                self.__resolve_node(dep_name, resolved, unresolved)
+                self.__resolve_down(dep_name, resolved, unresolved)
         resolved.append(name)
+        unresolved.remove(name)
+
+    def __resolve_top_nodes(self, name, resolved, unresolved = []):
+        if name in resolved:
+            return
+        unresolved.append(name)
+        parents = False
+        for parent_name, dep_names in self.dep_dict.iteritems():
+            if name in dep_names:
+                if parent_name in unresolved:
+                    raise Exception('circular reference: %s -> %s' % (name, parent_name))
+                self.__resolve_top_nodes(parent_name, resolved, unresolved)
+                parents = True
+        if not parents:
+            resolved.append(name)
         unresolved.remove(name)
 
 ##########################################################################################
@@ -199,8 +224,9 @@ class DataTable(QtCore.QObject):
         self.colInfo = np.array([], dtype=dtColInfo)
         self.data = np.empty((0, len(self.colInfo)), dtype=object)
         # expression cache
-        self.expression_code = dict()
-        self.expression_order = []
+        self.expression_codes = dict()
+        self.expression_order_all = []
+        self.expression_orders = dict()
         # emit cleared, and add standard columns
         self.cleared.emit()
         self.addColumns([self.id_key])
@@ -353,34 +379,39 @@ class DataTable(QtCore.QObject):
             self.__rebuildExpressionCache()
         
     def __rebuildExpressionCache(self):
-        self.expression_code = dict()
-        self.expression_order = []
+        self.expression_codes = dict()
+        self.expression_order_all = []
+        self.expression_orders = dict()
         dynamic_cols  = self.searchFlag("dynamic")
         dynamic_names = [self.colInfo[col]["name"] for col in dynamic_cols]
         column_names  = self.colInfo["name"].tolist()
         
         solver = DependencySolver(dynamic_names)
-        transformFunc = ExpressionFuncTransform(column_names)
         transformValue = ExpressionValueTransform(column_names)
-        # for each dynamic column, create the ast, analyze, transform and compile
-        for col, name in zip(dynamic_cols, dynamic_names):
+        transformFunc = ExpressionFuncTransform(column_names, array_name="data_masked")
+
+        for col, col_name in zip(dynamic_cols, dynamic_names):
             try:
+                # determine dependencies for this column
                 tree = ast.parse(self.colInfo[col]["expression"], mode='eval')
-                solver.add(name, tree)
+                solver.add(col_name, tree)
+                # transform and compile the expression
                 transformFunc.visit(tree)
                 transformValue.visit(tree)
                 ast.fix_missing_locations(tree)
-                code = compile(tree, "<user expression '%s'>" % name, mode='eval')
-                self.expression_code[col] = code
-            except:
-                print "error compiling user expression for column '%s'" % name
-                self.expression_code[col] = compile("None", "<compile error>", mode='eval') 
-        # try to solve the dependency network
+                code = compile(tree, "<user expression '%s'>" % col_name, mode='eval')
+                self.expression_codes[col] = code
+            except Exception as e:
+                print "error compiling user expression for column '%s'" % col_name
+                self.expression_codes[col] = compile("None", "<compile error>", mode='eval') 
+        # try to solve dependencies
         try:
-            self.expression_order = [column_names.index(name) for name in solver.solve()]
+            self.expression_order_all = [column_names.index(name) for name in solver.solve()]
+            for col, col_name in zip(dynamic_cols, dynamic_names):
+                self.expression_orders[col] = [column_names.index(name) for name in solver.solve(col_name)]
         except Exception as e:
             print "error evaluating expressions,", e
-            self.expression_order = dynamic_cols
+            self.expression_order_all = dynamic_cols
     
     def updateDynamic(self, row = None, col = None):
         """
@@ -397,10 +428,9 @@ class DataTable(QtCore.QObject):
         else:
             rows = [row]
         if col is None:
-            cols = self.expression_order
+            cols = self.expression_order_all
         else:
-            # cols = [col] # TODO: add cols that depend on col
-            cols = self.expression_order
+            cols = self.expression_orders[col]
         
         # emit dataChanged for recalculated cells
         self._recalculateDynamic(rows, cols)
@@ -412,23 +442,31 @@ class DataTable(QtCore.QObject):
         Internal recalculation of dynamic expressions.
         Not to be called from outside.
         """
-        self._modified = True
-        
         if cols is None:
-            cols = self.expression_order
+            cols = self.expression_order_all
+        if not cols:
+            return
+        
+        # create masked array
+        mask = np.zeros_like(self.data, dtype=bool)
+        mask[self.data[:,self.discardCol]==True] = True
+        data_masked = np.ma.array(self.data, mask=mask)
         
         # create dict for evaluation of the expressions
-        eval_dict = {"math": math, "data": self.data}
+        eval_dict = {"math": math, "data": self.data, "data_masked": data_masked}
         
         # evaluate dynamic expressions for each row
         for row in rows:
             eval_dict["i"] = row
             for col in cols:
                 try:
-                    result = eval(self.expression_code[col], eval_dict)
-                except:
+                    result = eval(self.expression_codes[col], eval_dict)
+                except Exception as e:
+                    print e
                     result = None
                 self.data[row, col] = result
+        
+        self._modified = True
 
     def toggleFlag(self, col, flag):
         """
