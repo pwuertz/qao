@@ -794,6 +794,9 @@ class DataTableView(QtGui.QTableView):
         header.customContextMenuRequested.connect(self.headerContextMenu)
         header.setMovable(True)
         
+        # remove cell spacing
+        self.verticalHeader().setDefaultSectionSize(self.verticalHeader().fontMetrics().height()+2)
+        
         # check if user scrolled to the end
         self.scroll_to_end = True
         def onValueChanged(v):
