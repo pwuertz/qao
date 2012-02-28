@@ -326,7 +326,7 @@ class DataTable(QtCore.QObject):
         self.colInfo = np.delete(self.colInfo, col)
         self.data = np.delete(self.data, col, axis=1)
         # recompile expressions
-        self.__rebuildExpressionCache()
+        self._rebuildExpressionCache()
         
         self._modified = True
         self.colRemoved.emit(col)
@@ -371,14 +371,14 @@ class DataTable(QtCore.QObject):
         if expression:
             self.setFlag(col, "dynamic")
             self.colInfo[col]["expression"] = expression
-            self.__rebuildExpressionCache()
+            self._rebuildExpressionCache()
             self.updateDynamic(row=None, col=col)
         else:
             self.setFlag(col, "dynamic", False)
             self.colInfo[col]["expression"] = ""
-            self.__rebuildExpressionCache()
+            self._rebuildExpressionCache()
         
-    def __rebuildExpressionCache(self):
+    def _rebuildExpressionCache(self):
         self.expression_codes = dict()
         self.expression_order_all = []
         self.expression_orders = dict()
@@ -853,6 +853,7 @@ class DataTableView(QtGui.QTableView):
         except:
             print "error constructing table"
             return False
+        dataTable._rebuildExpressionCache()
         self.setDataTable(dataTable)
         
         # restore view properties
