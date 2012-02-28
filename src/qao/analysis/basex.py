@@ -57,8 +57,9 @@ class RadialGaussBasex:
     
     def __init__(self, nr, dr=1.0, q = 1e-3):
         # array for radial position values
-        r = np.arange(nr, dtype=float) * dr
-        r = r.reshape([r.size, 1])
+        self.r = np.arange(nr, dtype=float) * dr
+        r = self.r.reshape([nr, 1])
+        
         # array for basis function indices
         nk = r.size-1
         k  = np.arange(1, nk+1).reshape([1, nk])
@@ -124,6 +125,15 @@ class RadialGaussBasex:
         coeffs = coeffs * 1./np.sqrt(2*np.pi)/self.sig
         return self.synthesize(coeffs)
 
+    def sythesizeDeriv(self, coeffs):
+        """
+        Reconstruct the derivative df/dr from coefficients
+        """
+        coeffs = - coeffs / self.sig**2
+        deriv =  self.r * self.synthesize(coeffs)
+
+        return deriv
+    
 
 def test_basex():
     import pylab as p
@@ -147,11 +157,12 @@ def test_basex():
     coeffs = basex.analyze(data_abel)
     data_abel_s = basex.synthesize(coeffs)
     data_r_s = basex.synthesizeInvAbel(coeffs)
-    
+    data_abel_ds = basex.sythesizeDeriv(coeffs)
+     
     #p.imshow(function_2d)
     x = X.ravel()
     p.figure(figsize=(10,7))
-    gs = GridSpec(2, 2)
+    gs = GridSpec(3, 2)
     gs.update(hspace=.4)
     ax = p.subplot(gs[0,0])
     ax.set_axis_off()
@@ -174,7 +185,21 @@ def test_basex():
     ax.set_xlabel("radius")
     ax.set_ylabel("density")
     ax.legend()
+
+    ax = p.subplot(gs[2,0:2])
+    ax.set_title("derivative from basex coefficients")
+    ax.plot(x, data_abel_s, "b-", label="original function")
+    ax = p.twinx()
+    ax.plot(x, data_abel_ds, "r-", label="derivative")
+    ax.set_xlabel("radius")
+    ax.set_ylabel("density")
+    ax.legend()
+
     p.show()
 
 if __name__ == '__main__':
     test_basex()
+    
+    
+    
+    
