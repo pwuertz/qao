@@ -139,7 +139,10 @@ class MatplotlibWidget(QtGui.QWidget):
         assert len(self.plotPointGroups[-1]) < len(self.linestyles), "maximum number of plot group elements reached"
         pointGroup = self.plotPointGroups[-1]
         lineGroup  = self.plotLineGroups[-1]
-        xu, yu = unique_mean(x, y)
+        if len(x) != 0:
+            xu, yu = unique_mean(x, y)
+        else:
+            xu, yu = [], []
         points = matplotlib.lines.Line2D(x, y,
                                        color = self.colors[len(self.plotPointGroups)-1],
                                        marker = "o", ls = "")
@@ -168,7 +171,10 @@ class MatplotlibWidget(QtGui.QWidget):
         """
         line   = self.plotLineGroups[group][plot]
         points = self.plotPointGroups[group][plot]
-        xu, yu = unique_mean(x, y)
+        if len(x) != 0:
+            xu, yu = unique_mean(x, y)
+        else:
+            xu, yu = [], []
         line.set_xdata(xu)
         line.set_ydata(yu)
         points.set_xdata(x)

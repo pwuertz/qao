@@ -448,7 +448,7 @@ class DataTable(QtCore.QObject):
             return
         
         # create masked array
-        mask = np.zeros_like(self.data, dtype=bool)
+        mask = np.zeros(self.data.shape, dtype=bool)
         mask[self.data[:,self.discardCol]==True] = True
         data_masked = np.ma.array(self.data, mask=mask)
         
@@ -462,7 +462,6 @@ class DataTable(QtCore.QObject):
                 try:
                     result = eval(self.expression_codes[col], eval_dict)
                 except Exception as e:
-                    print e
                     result = None
                 self.data[row, col] = result
         
@@ -609,9 +608,12 @@ class DataTable(QtCore.QObject):
         rowsValid = np.not_equal(self.data[:, columns], None).all(axis=1)
         rowsDiscard = self.data[:, self.discardCol].astype(bool)
         rowsUsed = rowsValid * (~rowsDiscard)
-        data = self.data[rowsUsed][:,columns].transpose()
-        data = [data[i] for i in range(len(columns))]
-        return data    
+        if rowsUsed.size != 0:
+            data = self.data[rowsUsed][:,columns].transpose()
+            data = [data[i] for i in range(len(columns))]
+            return data
+        else:
+            return [[] for i in range(len(columns))]
     
     def getColumnValuesGrouped(self, *columns):
         """
@@ -1074,6 +1076,7 @@ class DataTablePlot(MatplotlibWidget):
         dataTable.rowInserted.connect(self.updatePlotData)
         dataTable.rowRemoved.connect(self.updatePlotData)
         dataTable.flagChanged.connect(self.handleFlagChange)
+        self.setupPlotData()
     
     def showEvent(self, event):
         self.setupPlotData()
