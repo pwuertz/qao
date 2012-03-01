@@ -56,7 +56,7 @@ class WithoutHistogram:
         Q = (2 * (-1) ** (i - 1) * np.exp(a * i ** 2)).sum()
         return Q
 
-    def approx(self, order_max=20):
+    def approx(self, order_max=20, q_threshold=0.6):
         """
         Approximate a density distribution from the given data.
         
@@ -68,6 +68,7 @@ class WithoutHistogram:
         The method will be executed automatically if required.
         
         :param order_max: (int) Max Fourier-order for approximation.
+        :param q_threshold: (float) Threshold for accepting the Kolmogorov criterion.
         :returns: (boolean) Success.
         """
         # ecdf
@@ -93,7 +94,7 @@ class WithoutHistogram:
             # kolmogorov test
             D = np.abs(self.cdf - ecdf).max()
             Q = self._kolmogorovMagic(D)
-            if Q > .5:
+            if Q > q_threshold:
                 self._approxDict["Q"] = Q
                 return True
         
@@ -127,7 +128,9 @@ def test_withoutHistogram():
     
     # approximate the distribution
     wh = WithoutHistogram(X)
-    assert wh.approx(), "approximation failed"
+    print "Success: %s" % wh.approx(q_threshold=0.7)
+    print "Q reached: %f, max order: %d" % (wh._approxDict["Q"],
+                                            len(wh._approxDict["coeffs"]))
     
     # plot the approximated distribution
     xf = np.linspace(X.min(), X.max(), 500)
