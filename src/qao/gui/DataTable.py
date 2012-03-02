@@ -22,6 +22,9 @@ from MatplotlibWidget import MatplotlibWidget
 ##########################################################################################
 # Tools for working with expressions
 
+expr_funcs = ["min", "max", "mean", "std", "sum"]
+expr_funcs_rex = re.compile("^(?P<func>%s)_(?P<name>.+)" % "|".join(expr_funcs))
+
 class ExpressionFuncTransform(ast.NodeTransformer):
     """
     Manipulates the AST of parsed user expressions (only intended for internal use).
@@ -29,9 +32,6 @@ class ExpressionFuncTransform(ast.NodeTransformer):
     This transformer changes function calls like ``mean_column(5)`` to method
     calls of array slices like ``data[i-5-1:i+1, col].mean()``.
     """
-    functions = ["min", "max", "mean", "sum"]
-    rex = re.compile("^(?P<func>%s)_(?P<name>.+)" % "|".join(functions))
-
     def __init__(self, column_names, array_name = "data", row_name = "i"):
         ast.NodeTransformer.__init__(self)
         self.column_names = column_names
@@ -40,7 +40,9 @@ class ExpressionFuncTransform(ast.NodeTransformer):
 
     def visit_Call(self, node):
         # check if the function should be handled
-        m = self.rex.match(node.func.id)
+        if not isinstance(node.func, ast.Name):
+            return
+        m = expr_funcs_rex.match(node.func.id)
         if not m:
             return node
         if m.group("name") not in self.column_names:
@@ -106,7 +108,7 @@ class DependencySolver(ast.NodeVisitor):
     Example::
 
         names = ["col1", "col2", "col3"]
-        expressions = ["col3 + col2", "mean(col3, 5)", "col5"]
+        expressions = ["col3 + col2", "mean_col3(5)", "col5"]
         
         solver = DependencySolver(names)
         for name, expr in zip(names, expressions):
@@ -128,6 +130,14 @@ class DependencySolver(ast.NodeVisitor):
     def visit_Name(self, node):
         if (not self.names) or (node.id in self.names):
             self.__names_found.append(node.id)
+
+    def visit_Call(self, node):
+        # check if the function should be handled
+        if not isinstance(node.func, ast.Name):
+            return
+        m = expr_funcs_rex.match(node.func.id)
+        if (not self.names) or m.group("name") in self.names:
+            self.__names_found.append(m.group("name"))
     
     def add(self, name, tree):
         # add dependencies for `name` found in the provided AST
@@ -446,6 +456,10 @@ class DataTable(QtCore.QObject):
             cols = self.expression_order_all
         if not cols:
             return
+
+        for col in cols:
+            print self.colInfo["name"][col],
+        print
         
         # create masked array
         mask = np.zeros(self.data.shape, dtype=bool)
