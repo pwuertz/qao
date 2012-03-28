@@ -109,6 +109,7 @@ class LevmarFitter(object):
         self.pars_name = pars_name
         self.pars_fit = np.zeros(len(pars_name), dtype = DEFAULT_TYPE_NPY)
         self.data = np.asfarray(data, dtype = DEFAULT_TYPE_NPY)
+        self._invsigma = None
         self._f = np.empty(self.data.size, dtype = DEFAULT_TYPE_NPY)
         self._J = np.empty([self.pars_fit.size, self._f.size], dtype = DEFAULT_TYPE_NPY)
         
@@ -135,6 +136,21 @@ class LevmarFitter(object):
         if self.data.shape != data.shape:
             raise ValueError("Shape mismatch. Expected dimensions %s." % self.data.shape) 
         self.data = data
+    
+    def setSigma(self, sigma):
+        """
+        Provide standard deviation errors to the fit model. The shape of sigma
+        must be equal to the functions shape. Set None to remove the errors from
+        this fitter.
+        
+        :param sigma: (ndarray) Standard deviations for fit.
+        """
+        if sigma is not None:
+            # TODO: allow sigma to be scalar
+            sigma = np.asfarray(sigma, dtype = DEFAULT_TYPE_NPY) 
+            self._invsigma = 1. / sigma
+        else:
+            self._invsigma = None
     
     def fit(self, pars_guess = None, tau = 1e-2, eps1 = 1e-6, eps2 = 1e-6, kmax = 50, return_dict = False, callback = None):
         """
@@ -218,6 +234,7 @@ class LevmarFitter(object):
         # calculate f and J
         self.fJ(pars)
         if self.data is not None: self._f -= self.data.ravel()
+        if self._invsigma is not None: self._f *= self._invsigma.ravel()
         
         A = np.inner(self._J, self._J)
         g = np.inner(self._J, self._f)
@@ -250,6 +267,7 @@ class LevmarFitter(object):
             # recalculate f and J for new pars
             self.fJ(pars_new)
             if self.data is not None: self._f -= self.data.ravel()
+            if self._invsigma is not None: self._f *= self._invsigma.ravel()
             
             errsq_new = np.linalg.norm(self._f)**2
             rho = (errsq - errsq_new)/np.inner(d, mu*d - g)
