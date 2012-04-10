@@ -309,7 +309,12 @@ def __loadQmi(filename, **kwargs):
     # read / check header
     headersize = struct.calcsize("!4sQ")
     (magic, datasize) = struct.unpack("!4sQ", f.read(headersize))
-    if magic != "QMI2": raise Exception("Invalid QMI file")
+    if magic == "QMI1":
+        version = 1
+    elif magic == "QMI2":
+        version = 2
+    else:
+        raise Exception("Invalid QMI file")
     
     # read data block
     data = f.read(datasize)
@@ -328,12 +333,20 @@ def __loadQmi(filename, **kwargs):
     height = int(qmi_size.getAttribute("height"))
     qmi_dtype = doc.getElementsByTagName("dtype")[0]
     dtype = str(qmi_dtype.firstChild.data)
-    compr = str(doc.getElementsByTagName("compression")[0].firstChild.data)
     
+    # version 2 added compression
+    if version >= 2:
+        compr = str(doc.getElementsByTagName("compression")[0].firstChild.data)
+    else:
+        compr = "raw"
+        
     # interpret data
-    if   compr == "bz2":  data = bz2.decompress(data)
-    elif compr == "raw":  None
-    else:                 raise Exception("Invalid compression '%s'", compr)
+    if compr == "bz2":
+        data = bz2.decompress(data)
+    elif compr == "raw":
+        pass
+    else:
+        raise Exception("Invalid compression '%s'", compr)
     image_data = numpy.fromstring(data, dtype)
     image_data = image_data.reshape(height, width)
     
