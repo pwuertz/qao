@@ -7,8 +7,6 @@ except:
 import threading
 import time
 
-from settings import adwinDeviceNo
-
 # Data from the awinmcb_readout process
 slotNum = 5
 buffersize = 1000000
@@ -49,7 +47,7 @@ class IonScanSequence(object):
 			raise Exception("Tried to add IonSignal to wrong sequence")
 
 class TicoMCS(threading.Thread):
-	def __init__(self,callback,statusCallback = None):
+	def __init__(self,callback,statusCallback = None, adwinDeviceNo=0x150):
 		threading.Thread.__init__(self)
 		self.adev = ADwin.ADwin(adwinDeviceNo)
 		self.currentSequence = None
