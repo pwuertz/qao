@@ -24,7 +24,7 @@ class QDummyMCS(DummyMCS, QtCore.QObject):
 	statusChanged = QtCore.pyqtSignal(int)
 
 	def __init__(self):
-		ticomcs.DummyMCS.__init__(self,self._handleNewData,self._handleStatusChanged)
+		DummyMCS.__init__(self,self._handleNewData,self._handleStatusChanged)
 		QtCore.QObject.__init__(self)
 		self.start()
 
