@@ -101,25 +101,27 @@ class TicoMCS(threading.Thread):
 		self.keepRunning = False
 
 class DummyMCS(threading.Thread):
-	def __init__(self,callback,statusCallback=None):
+	def __init__(self,callback,statusCallback=None,delay=3,scans=2, length=1, frq = 1000):
 		threading.Thread.__init__(self)
 		self.keepRunning = True	
 		self.callback = callback
 		self.statusCallback = statusCallback
+		self.delay = delay
+		self.scans = scans	#number of scans
+		self.length = length #length of the gate in s
+		self.frq = frq
 		
 	def run(self):
-		scans = 2	#number of scans
-		length = 1 #length of the gate in s
 		while self.keepRunning:
 			acqTimestamp = int(time.time())
 			currentSequence = IonScanSequence(acqTimestamp)
 			
-			for scan in range(scans):
-				freq = np.random.randint(1000,2000)
-				data = np.asarray([np.random.randint(0,length*10e6) for i in range(int(length*freq))])
+			for scan in range(self.scans):
+				freq = np.random.randint(0.9*self.frq,1.1*self.frq)
+				data = np.asarray([np.random.randint(0,self.length*10e7) for i in xrange(int(self.length*freq))])
 				currentSequence.add(IonSignal(acqTimestamp,scan+1,np.array(data)))
 			self.callback(currentSequence)
-			time.sleep(3)
+			time.sleep(self.delay)
 
 	def stop(self):
 		self.keepRunning = False

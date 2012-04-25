@@ -23,8 +23,8 @@ class QDummyMCS(DummyMCS, QtCore.QObject):
 	newData = QtCore.pyqtSignal(IonScanSequence)
 	statusChanged = QtCore.pyqtSignal(int)
 
-	def __init__(self):
-		DummyMCS.__init__(self,self._handleNewData,self._handleStatusChanged)
+	def __init__(self,delay=3,scans=2, length=1, frq=1000):
+		DummyMCS.__init__(self,self._handleNewData,self._handleStatusChanged,delay=delay,scans=scans, length=length, frq=frq)
 		QtCore.QObject.__init__(self)
 		self.start()
 
