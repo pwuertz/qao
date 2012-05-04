@@ -103,6 +103,19 @@ def angle_mean_deg(angle_list_deg):
     phi_rad, rel_length = angle_mean(angle_list_rad)
     return [phi_rad * 180. / np.pi, rel_length]
 
+def angle_diff(phi1, phi2):
+    """
+    Calculate the difference between angle phi1 and phi2 in radians.
+    
+    This will return always the shortest distance, taking care about the
+    value wrapping at 2pi.
+    
+    This ensures -pi <= phi1-phi2 < phi.
+    
+    :returns: phi1-phi2
+    """
+    return ((phi1-phi2 + np.pi) % (2*np.pi)) - np.pi
+
 def angle_mean_std(angles_rad):
     """
     Calculate the mean angle and the standard deviation from a
@@ -118,7 +131,7 @@ def angle_mean_std(angles_rad):
     """
     angles_rad = np.asfarray(angles_rad)
     mean_angles = np.angle(np.exp(1j*angles_rad).sum())
-    std_angles  = np.std((((angles_rad - mean_angles) + np.pi) % (2*np.pi)) - np.pi)
+    std_angles  = np.std(angle_diff(angles_rad, mean_angles))
     return mean_angles, std_angles
 
 def findMostFrequent(data):
