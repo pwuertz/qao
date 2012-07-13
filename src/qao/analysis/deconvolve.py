@@ -17,7 +17,7 @@ def ion_tof_spectrum(dwell_time, n):
     """Calculate a pixel based spectrum based on the multipeak fit parameters
     of the ion time of flight measurement.
     
-    :param dwell_time: (float) Dwell time of the pixels in micrometers.
+    :param dwell_time: (float) Dwell time of the pixels in microseconds.
     :param n: (int) Length of the spectrum in pixels.
     :returns: (ndarray) Normalized time of flight spectrum for given parameters.
     """
@@ -44,13 +44,14 @@ def ion_tof_spectrum(dwell_time, n):
     spec *= 1./spec.sum()    
     return spec
 
-def ion_wien_deconvolve(data, dwell_time, f=.7):
+def ion_wien_deconvolve(data, dwell_time, f=.7, clip=False):
     """Deconvolve the time resolved ion signal given by data using the
     Wien deconvolution technique.
     
     :param data: (ndarray) Ion signal to be deconvolved.
-    :param dwell_time: (float) Dwell time of the pixels in micrometers.
+    :param dwell_time: (float) Dwell time of the pixels in microseconds.
     :param f: (float) Effectively smoothens the result for higher values.
+    :param clip: (bool) Clip negative elements of the returned array.
     :returns: (ndarray) Deconvolved ion signal.
     """
     
@@ -70,14 +71,17 @@ def ion_wien_deconvolve(data, dwell_time, f=.7):
     W = D_signal_power/(D_signal_power+D_noise_power) / D_psf
     d_estimate = np.abs(np.fft.fftshift(np.fft.ifft(D_signal * W)))
     
-    return d_estimate[data.size/2:data.size/2+data.size].reshape(data.shape)
+    result = d_estimate[data.size/2:data.size/2+data.size].reshape(data.shape)
+    result = np.clip(result, 0, np.inf) if clip else result
+    return result
 
-def ion_direct_unfold(data, dwell_time):
+def ion_direct_unfold(data, dwell_time, clip=False):
     """Deconvolve the time resolved ion signal given by data using a
     direct deconvolution method.
     
     :param data: (ndarray) Ion signal to be deconvolved.
-    :param dwell_time: (float) Dwell time of the pixels in micrometers.
+    :param dwell_time: (float) Dwell time of the pixels in microseconds.
+    :param clip: (bool) Clip negative elements of the returned array.
     :returns: (ndarray) Deconvolved ion signal.
     """
 
@@ -122,5 +126,6 @@ def ion_direct_unfold(data, dwell_time):
         result[i] = n_atoms
         source[i - spec.size:i] -= spec * n_atoms
 
+    result = np.clip(result, 0, np.inf) if clip else result
     return result.reshape(shape)
     
