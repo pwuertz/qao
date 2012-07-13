@@ -44,7 +44,7 @@ def ion_tof_spectrum(dwell_time, n):
     spec *= 1./spec.sum()    
     return spec
 
-def wien_deconvolve(data, dwell_time, f=.7):
+def ion_wien_deconvolve(data, dwell_time, f=.7):
     """Deconvolve the time resolved ion signal given by data using the
     Wien deconvolution technique.
     
@@ -72,7 +72,7 @@ def wien_deconvolve(data, dwell_time, f=.7):
     
     return d_estimate[data.size/2:data.size/2+data.size].reshape(data.shape)
 
-def direct_unfold(data, dwell_time):
+def ion_direct_unfold(data, dwell_time):
     """Deconvolve the time resolved ion signal given by data using a
     direct deconvolution method.
     
