@@ -306,6 +306,58 @@ def autocorr2d_sum(data_list):
     autoc = np.fft.fftshift(autoc)
     return autoc
 
+def fft2_padded(data):
+    """
+    Calculate the FFT for a two-dimensional array. The data is zero padded
+    in order to prevent circular convolution. The zero frequency of the
+    returned spectrum is shifted to the center.
+
+    :param data: (ndarray) 2d array of data
+
+    .. seealso:: :func:`fft2freq_padded`, :func:`fft2inv_padded`
+    """
+    h, w = data.shape
+    data_zeropad = np.zeros([2*h, 2*w], dtype = float)
+    data_zeropad[h/2:h/2+h, w/2:w/2+w] = data
+    return np.fft.fftshift(np.fft.fft2(data_zeropad))
+
+def fft2freq_padded(data, system="cartesian"):
+    """
+    Return the frequency map for the fourier spectrum returned by :func:`fft2_padded`.
+    
+    If `system` is "cartesian" (default), the coordinates are returned as (f_x, f_y).
+    If `system` is "polar", the coordinates are returned as radii and angles (f_r, f_alpha).
+    
+    :param data: (ndarray) 2d array of data
+    :param system: (str) System of the returned frequency coordinates.
+    :returns: Tuple of frequency coordinates.
+    
+    .. seealso:: :func:`fft2_padded`, :func:`fft2inv_padded`
+    """
+    fx = np.fft.fftshift(np.fft.fftfreq(data.shape[1]*2)).reshape([1,data.shape[1]*2])
+    fy = np.fft.fftshift(np.fft.fftfreq(data.shape[0]*2)).reshape([data.shape[0]*2,1])
+    if system == "cartesian":
+        return fx, fy    
+    elif system == "polar":
+        return (fx**2 + fy**2)**.5, np.arctan2(fy, fx)
+    else:
+        raise ValueError("invalid coordinate system")
+
+def fft2inv_padded(fdata, absolute=True):
+    """
+    Return the inverse FFT from the spectrum calculated by fft2_padded. The
+    result is clipped back to the original size of the data.
+    
+    :param fdata: (ndarray) Fourier spectrum as returned by :func:`fft2_padded`.
+    :param absolute: (bool) Return the real valued absolute of the result.
+    :returns: (ndarray) Inverse FFT of `fdata`.
+
+    .. seealso:: :func:`fft2_padded`, :func:`fft2freq_padded`
+    """
+    h, w = fdata.shape[0]/2, fdata.shape[1]/2
+    result = np.fft.ifft2(np.fft.fftshift(fdata))[h/2:h/2+h, w/2:w/2+w]
+    return np.abs(result) if absolute else result
+
 def parab_interpolation(data, xi, yi):
     """
     Interpolate a peak maximum position within a 2d-image
