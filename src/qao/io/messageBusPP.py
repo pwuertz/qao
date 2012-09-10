@@ -3,7 +3,7 @@ import time #for profiling
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 9090
-DEFAULT_TIMEOUT = 5000
+DEFAULT_TIMEOUT = 500
 
 TYPE_SUBSCRIBE   = "subscribe"
 TYPE_UNSUBSCRIBE = "unsubscribe"
