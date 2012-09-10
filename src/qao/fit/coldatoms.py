@@ -254,7 +254,7 @@ class Bimodal2D(LevmarFitter):
         weave.inline(self.fJ_code, ["f", "J", "cache_ex", "cache_ey", "p"], **opt_args)
 
     def sanitizePars(self, pars):
-        pars[[3,4,6,7]] = np.abs(pars[[3,4,6,7]])
+        pars[[0,1,3,4,6,7]] = np.abs(pars[[0,1,3,4,6,7]])
         return pars
 
     def integral_tf(self, pars = None):
@@ -267,6 +267,7 @@ class Bimodal2D(LevmarFitter):
         """
         if pars is None:
             pars = self.pars_fit
+        pars = self.sanitizePars(pars)
         return 2.*np.pi / 5. * pars[0] * pars[3] * pars[6]
 
     def integral_gauss(self, pars = None):
@@ -279,6 +280,7 @@ class Bimodal2D(LevmarFitter):
         """
         if pars is None:
             pars = self.pars_fit
+        pars = self.sanitizePars(pars)
         return 2.*np.pi * pars[1] * pars[4] * pars[7]
 
     def integral(self, pars = None):
