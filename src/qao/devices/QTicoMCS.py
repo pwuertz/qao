@@ -34,5 +34,3 @@ class QDummyMCS(DummyMCS, QtCore.QObject):
 	def _handleStatusChanged(self,status):
 		self.statusChanged.emit(status)
 
-	
-	

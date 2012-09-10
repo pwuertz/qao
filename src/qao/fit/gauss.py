@@ -421,7 +421,7 @@ if __name__ == "__main__":
     n = 250
     Y, X = np.ogrid[:n:1., :n:1.]
     
-    alpha_org = -10 * np.pi / 180.
+    alpha_org = -90 * np.pi / 180.
     pars_org = np.asfarray([1., n/2, 50, n/2, 5, alpha_org, 0])
     
     data_org = gauss2drot(X, Y, pars_org)
@@ -433,8 +433,10 @@ if __name__ == "__main__":
     pars_fit = fitter.fit(pars_ini)
     data_fit = gauss2drot(X, Y, pars_fit)
     
-    print pars_fit
-    print fitter.getFitParsDict()
+    #print pars_fit
+    print "alpha: %.2f"%(fitter.getFitParsDict()['alpha']*180/np.pi)
+    print "sx: %.2f"%fitter.getFitParsDict()['s_x']
+    print "sy: %.2f"%fitter.getFitParsDict()['s_y']
     
     import pylab as p
     p.subplot(1,3,1)
