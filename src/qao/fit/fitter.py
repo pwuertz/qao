@@ -506,7 +506,7 @@ class FitJob(QtCore.QObject):
         """
         Run the `fit` method of a fitter in a seperate process.
         
-        The status of the running process can be checked by :func`isRunning`.
+        The status of the running process can be checked by :func:`isRunning`.
         When the fit procedure finishes, the `fitFinished` signal will be
         emitted and the fitter object will contain the results.
         
