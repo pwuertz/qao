@@ -33,16 +33,22 @@ class IonSignalFile():
             if name[-5:] == "_data":
                 self.scanNames.append(name[:-5])
     
+    def getScanNames(self):
+		return self.scanNames
+    
     def getIonSignal(self,name):
         if name in self.scanNames:
-            return IonSignal(dict(self.fh["%s_data"%name].attrs)["seqTimestamp"],0,self.fh["%s_data"%name])            
+            return IonSignal(self.getScanMetadata(name)["seqTimestamp"],0,self.fh["%s_data"%name])            
     
     def getIonScanSequence(self):
         iss = IonScanSequence(self.seqTimestamp)
         for i,name in enumerate(self.scanNames):
-            iss.add(IonSignal(dict(self.fh["%s_data"%name].attrs)["seqTimestamp"],i,self.fh["%s_data"%name]))
+            iss.add(IonSignal(self.getScanMetadata(name)["seqTimestamp"],i,self.fh["%s_data"%name]))
         return iss
-        
+    
+    def getScanMetadata(self,name):
+		return dict(self.fh["%s_data"%name].attrs)
+    
     def close(self):
         self.fh.close()
 
@@ -54,6 +60,11 @@ class IonMeasurement():
             if infile.split('.')[-1] not in ["h5", "hdf", "hdf5"]: continue
             isf = IonSignalFile("%s%s"%(dirname,infile))
             self.ionSignalFiles.update({isf.seqTimestamp:isf})
+        
+        #extract names of scans an their scan descriptors
+        self.scansMetadata = {}
+        for name in isf.scanNames:
+			self.scansMetadata.update({name:isf.getScanMetadata(name)})
             
     def getEvents(self,seqTimestamps,name):
         iontimes = np.empty(0)
