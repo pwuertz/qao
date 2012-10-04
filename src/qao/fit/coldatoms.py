@@ -203,6 +203,8 @@ class Bimodal2D(LevmarFitter):
     const int nx = Ncache_ex[0];
     const int ny = Ncache_ey[0];
     const int n = nx * ny;
+    const float_type amp_t = fabs(p[0]);
+    const float_type amp_g = fabs(p[1]);
     const float_type invrx = 1. / p[3];
     const float_type invsx = 1. / p[4];
     const float_type invry = 1. / p[6];
@@ -226,19 +228,19 @@ class Bimodal2D(LevmarFitter):
             const int ind = nx*iy+ix;
             const float_type distx = ix-p[2];
             
-            const float_type gauss = p[1] * cache_ex[ix] * cache_ey[iy];
+            const float_type gauss = amp_g * cache_ex[ix] * cache_ey[iy];
             
             const float_type is_inside_p = (float_type) ((distx*distx*invrx*invrx + disty*disty*invry*invry) < 1.);
             const float_type parab_sqrt = sqrt(1. - distx*distx*invrx*invrx - disty*disty*invry*invry) * is_inside_p;
             
-            f[ind] = gauss + p[0]*parab_sqrt*parab_sqrt*parab_sqrt + p[8];
+            f[ind] = gauss + amp_t*parab_sqrt*parab_sqrt*parab_sqrt + p[8];
             J[ind] = parab_sqrt*parab_sqrt*parab_sqrt;
             J[ind+1*n] = cache_ex[ix] * cache_ey[iy];
-            J[ind+2*n] = p[0]*3.*distx*invrx*invrx*parab_sqrt + distx*invsx*invsx*gauss;
-            J[ind+3*n] = p[0]*3.*distx*distx*invrx*invrx*invrx * parab_sqrt;
+            J[ind+2*n] = amp_t*3.*distx*invrx*invrx*parab_sqrt + distx*invsx*invsx*gauss;
+            J[ind+3*n] = amp_t*3.*distx*distx*invrx*invrx*invrx * parab_sqrt;
             J[ind+4*n] = distx*distx*invsx*invsx*invsx * gauss;
-            J[ind+5*n] = p[0]*3.*disty*invry*invry*parab_sqrt + disty*invsy*invsy*gauss;
-            J[ind+6*n] = p[0]*3.*disty*disty*invry*invry*invry * parab_sqrt;
+            J[ind+5*n] = amp_t*3.*disty*invry*invry*parab_sqrt + disty*invsy*invsy*gauss;
+            J[ind+6*n] = amp_t*3.*disty*disty*invry*invry*invry * parab_sqrt;
             J[ind+7*n] = disty*disty*invsy*invsy*invsy * gauss;
             J[ind+8*n] = 1.0;
         }
@@ -252,7 +254,7 @@ class Bimodal2D(LevmarFitter):
         weave.inline(self.fJ_code, ["f", "J", "cache_ex", "cache_ey", "p"], **opt_args)
 
     def sanitizePars(self, pars):
-        pars[[3,4,6,7]] = np.abs(pars[[3,4,6,7]])
+        pars[[0,1,3,4,6,7]] = np.abs(pars[[0,1,3,4,6,7]])
         return pars
 
     def integral_tf(self, pars = None):
@@ -265,6 +267,7 @@ class Bimodal2D(LevmarFitter):
         """
         if pars is None:
             pars = self.pars_fit
+        pars = self.sanitizePars(pars)
         return 2.*np.pi / 5. * pars[0] * pars[3] * pars[6]
 
     def integral_gauss(self, pars = None):
@@ -277,6 +280,7 @@ class Bimodal2D(LevmarFitter):
         """
         if pars is None:
             pars = self.pars_fit
+        pars = self.sanitizePars(pars)
         return 2.*np.pi * pars[1] * pars[4] * pars[7]
 
     def integral(self, pars = None):
