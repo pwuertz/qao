@@ -1,6 +1,8 @@
 from qao.devices.TicoMCS import IonScanSequence,IonSignal
 import os,h5py
 import numpy as np
+import copy
+
 
 def addTimestamp(fname):
     if not os.path.isfile(fname):
@@ -24,7 +26,8 @@ class IonSignalFile():
         if not os.path.isfile(fname):
             raise Exception("File Not Found: %s"%fname)
         self.fname = fname
-        self.fh = h5py.File(fname, 'r')
+        self.fh = None
+        self.openFile()
         self.scanNames = []
         self.metadata = dict(self.fh.attrs)
         self.seqTimestamp = self.metadata["seqTimestamp"]
@@ -32,19 +35,35 @@ class IonSignalFile():
         for name in self.fh:
             if name[-5:] == "_data":
                 self.scanNames.append(name[:-5])
+                
+        self.closeFile()
     
-    def getIonSignal(self,name):
+    def getIonSignal(self,name,scanNum = 0,keepOpen = False):
+        if not self.fh:
+            self.openFile()
         if name in self.scanNames:
-            return IonSignal(dict(self.fh["%s_data"%name].attrs)["seqTimestamp"],0,self.fh["%s_data"%name])            
+            return IonSignal(dict(self.fh["%s_data"%name].attrs)["seqTimestamp"],scanNum,self.fh["%s_data"%name])            
+        if not keepOpen:
+            self.closeFile()
     
     def getIonScanSequence(self):
         iss = IonScanSequence(self.seqTimestamp)
         for i,name in enumerate(self.scanNames):
-            iss.add(IonSignal(dict(self.fh["%s_data"%name].attrs)["seqTimestamp"],i,self.fh["%s_data"%name]))
+            iss.add(self.getIonSignal(name,i,True))
+        self.closeFile()
         return iss
+    
+    def openFile(self):
+        if not self.fh:
+            plist = h5py.h5p.create(h5py.h5p.FILE_ACCESS)
+            plist.set_fclose_degree(h5py.h5f.CLOSE_STRONG)
+            f = h5py.h5f.open(self.fname,  h5py.h5f.ACC_RDONLY , fapl=plist)
+            self.fh = h5py.File(f)
         
-    def close(self):
+    def closeFile(self):
         self.fh.close()
+        del(self.fh)
+        self.fh = None
 
 class IonMeasurement():
     def __init__(self,dirname):
@@ -72,7 +91,7 @@ class IonMeasurement():
         return self.getEvents(self.ionSignalFiles.keys(),name)
         
     def getHistogram(self,seqTimestamp,name,bins):
-        return np.histogram(self.ionSignalFiles[seqTimestamp].getIonSignal().rawData/100,bins = bins)
+        return np.histogram(self.getEvents(seqTimestamp,name)/100,bins = bins)
     
     def getHistogramSum(self,seqTimestamps,name,bins):
         return np.histogram(self.getEvents(seqTimestamps,name)/100,bins = bins)
