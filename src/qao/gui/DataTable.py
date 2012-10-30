@@ -1243,13 +1243,16 @@ class DataTableTabs(QtGui.QTabWidget):
         # table tabs actions
         actionActive = QtGui.QAction("Make Active", None)
         actionActive.triggered.connect(lambda: self.setActiveTable(tab))
+        tabname = "results"
+        if self.count():
+            tabname = "%s-1"%(self.tabText(self.indexOf(self.getActiveTable()))[0:-1])
         def newFunc():
-            name, ok = QtGui.QInputDialog.getText(self, "New Table", "Name for new table:", text = "results")
+            name, ok = QtGui.QInputDialog.getText(self, "New Table", "Name for new table:", text = tabname)
             if ok: self.newTable(name = str(name))
         actionNew = QtGui.QAction("New Table", None)
         actionNew.triggered.connect(newFunc)
         def newTplFunc():
-            name, ok = QtGui.QInputDialog.getText(self, "New Table", "Name for new table:", text = "results")
+            name, ok = QtGui.QInputDialog.getText(self, "New Table", "Name for new table:", text = tabname)
             if ok: tableView = self.newTable(name = str(name))
             else: return
             tableView.loadTemplateDialog()
