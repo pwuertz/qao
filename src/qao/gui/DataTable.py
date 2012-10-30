@@ -798,9 +798,11 @@ class DataTableView(QtGui.QTableView):
     default_path     = ""
     default_path_tpl = ""
     
-    def __init__(self, dataTable=None, dataTablePlot=None):
+    def __init__(self, dataTable=None, dataTablePlot=None,name="results"):
         QtGui.QTableView.__init__(self)
         if not dataTable: dataTable = DataTable()
+        
+        self.name = name
         
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         #self.setGridStyle(QtCore.Qt.DotLine)
@@ -909,7 +911,7 @@ class DataTableView(QtGui.QTableView):
         Displays a dialog for saving the data in the table to a file.
         """
         filefilter = ["CSV File (*.csv)", "Python File (*.py)"]
-        fname, filt = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", DataTableView.default_path, ";;".join(filefilter))
+        fname, filt = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", "%s/%s.csv"%(DataTableView.default_path,self.name), ";;".join(filefilter))
         fname = str(fname)
         if fname:
             filt = {0: ".csv", 1: ".py"}[filefilter.index(str(filt))]
@@ -1190,7 +1192,7 @@ class DataTableTabs(QtGui.QTabWidget):
         """
         if not tableView:
             dataTable = DataTable(id_key = self.default_id_key)
-            tableView = DataTableView(dataTable)
+            tableView = DataTableView(dataTable,name=name)
         self.addTab(tableView, name)
         self.setCurrentIndex(self.count()-1)
         self.setActiveTable(self.count()-1)
