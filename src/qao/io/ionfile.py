@@ -27,7 +27,10 @@ class IonSignalFile():
             raise Exception("File Not Found: %s"%fname)
         self.fname = fname
         self.fh = None
-        self.openFile()
+        try:
+            self.openFile()
+        except:
+            raise Exception("Could not open file %s"%(fname))
         self.scanNames = []
         self.metadata = dict(self.fh.attrs)
         self.seqTimestamp = self.metadata["seqTimestamp"]
@@ -42,21 +45,18 @@ class IonSignalFile():
         if not self.fh:
             self.openFile()
         if name in self.scanNames:
-            return IonSignal(dict(self.fh["%s_data"%name].attrs)["seqTimestamp"],scanNum,self.fh["%s_data"%name])            
+            return IonSignal(self.getScanMetadata(name)["seqTimestamp"],scanNum,self.fh["%s_data"%name])            
         if not keepOpen:
             self.closeFile()
 
     def getScanNames(self):
-		return self.scanNames
-    
-    def getIonSignal(self,name):
-        if name in self.scanNames:
-            return IonSignal(self.getScanMetadata(name)["seqTimestamp"],0,self.fh["%s_data"%name])            
+        return self.scanNames           
 
     def getIonScanSequence(self):
+        if not self.fh:
+            self.openFile()
         iss = IonScanSequence(self.seqTimestamp)
         for i,name in enumerate(self.scanNames):
-
             iss.add(self.getIonSignal(name,i,True))
         self.closeFile()
         return iss
@@ -69,12 +69,18 @@ class IonSignalFile():
             self.fh = h5py.File(f)
     
     def closeFile(self):
-        self.fh.close()
-        del(self.fh)
-        self.fh = None
+        #self.fh.close()
+        #del(self.fh)
+        #self.fh = None
+        return
 
-    def getScanMetadata(self,name):
-		return dict(self.fh["%s_data"%name].attrs)
+    def getScanMetadata(self,name,keepOpen=False):
+        if not self.fh:
+            self.openFile()
+        return dict(self.fh["%s_data"%name].attrs)
+        if not keepOpen:
+            self.closeFile()
+        
 
 class IonMeasurement():
     def __init__(self,dirname):
@@ -82,13 +88,17 @@ class IonMeasurement():
         listing = os.listdir(dirname)
         for infile in listing:
             if infile.split('.')[-1] not in ["h5", "hdf", "hdf5"]: continue
-            isf = IonSignalFile("%s%s"%(dirname,infile))
+            try:
+                isf = IonSignalFile("%s%s"%(dirname,infile))
+            except:
+                continue            
             self.ionSignalFiles.update({isf.seqTimestamp:isf})
         
         #extract names of scans an their scan descriptors
         self.scansMetadata = {}
-        for name in isf.scanNames:
-			self.scansMetadata.update({name:isf.getScanMetadata(name)})
+        print len(self.ionSignalFiles.values())
+        for name in self.ionSignalFiles.values()[0].scanNames:
+            self.scansMetadata.update({name:isf.getScanMetadata(name)})
             
     def getEvents(self,seqTimestamps,name):
         iontimes = np.empty(0)
