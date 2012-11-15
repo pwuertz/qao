@@ -104,7 +104,9 @@ class IonSignalFile():
         if not self.fh:
             self.openFile()
         if name in self.scanNames:
+            if not len(self.fh["%s_data"%name]) > 0: return IonSignal(self.getScanMetadata(name)["seqTimestamp"],scanNum,[])            
             return IonSignal(self.getScanMetadata(name)["seqTimestamp"],scanNum,self.fh["%s_data"%name])            
+            
         if not keepOpen:
             self.closeFile()
 
@@ -153,6 +155,9 @@ class IonSignalFile():
         sd = ScanDescriptor(name,ScanRegion(x,y,w,h,rotation=rot/180*np.pi),dur,samplerate=sr)
         if patternPath:
             sd.loadSegmentsFromFile("%s/%s"%(patternPath,pat),sr)
+            if sd.parameterName:
+                sd.parameterValue =  int(metadata[sd.parameterName])
+                sd.reloadSegmentsFromFile(sr)
         return sd  
 
 class IonMeasurement():
@@ -214,4 +219,3 @@ class IonMeasurement():
     
     def getImageAll(self,name,bins):
         return self.getImage(self.getTimestamps(),name,bins)
-
