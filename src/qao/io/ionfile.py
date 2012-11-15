@@ -2,6 +2,64 @@ from qao.devices.TicoMCS import IonScanSequence,IonSignal
 import os,h5py
 import numpy as np
 import copy
+import scipy.weave as weave
+
+__compiler_args = ["-O3", "-march=native", "-ffast-math", "-fno-openmp"]
+__linker_args   = ["-fno-openmp"]
+opt_args = {"extra_compile_args": __compiler_args,
+            "extra_link_args": __linker_args}
+
+DEFAULT_TYPE_NPY = np.double
+DEFAULT_TYPE_C = "double"
+DEFAULT_TYPEDEFC = "typedef {0} float_type;\n".format(DEFAULT_TYPE_C)
+
+
+def createIonImage(scanDescriptor,ionSignal,bins):
+    slowImage, slowxedges, slowyedges = createIonImageSlow(scanDescriptor,ionSignal,bins)
+    #cImage, cxedges, cyedges = createIonImageC(scanDescriptor,ionSignal,bins)
+    #print slowImage-cImage
+    
+    
+    return slowImage, slowxedges, slowyedges
+
+def createIonImageSlow(scanDescriptor,ionSignal,bins):
+    path = scanDescriptor.getXYData()
+    if len(ionSignal.rawData) > 0 and ionSignal.rawData.max() > (scanDescriptor.duration*10e7):
+        raise DataTooLongException({"message":"Ion gate too long"})
+    if len(ionSignal.rawData) < 1:
+        return np.zeros(bins), np.linspace(scanDescriptor.scanRegion.width(),0,bins[0]), np.linspace(scanDescriptor.scanRegion.height(),0,bins[1]) 
+    data = ionSignal.rawData*1./(scanDescriptor.duration*10e7)*len(path[0])
+    X,Y = path[:,data.astype(int)]
+    H, xedges, yedges = np.histogram2d(-Y,X, bins=(bins[0],bins[1]),range=((-1,0),(0,1)))
+    xedges *= -scanDescriptor.scanRegion.width()
+    yedges *= scanDescriptor.scanRegion.height()
+    
+    return H, xedges, yedges
+
+
+def createIonImageC(scanDescriptor,ionSignal,bins):
+    f_code = DEFAULT_TYPEDEFC + """
+        const int n_counts = Ndata[0];
+        const int n_path = NpathX[0];
+        const int bins_x = Nhist[0];
+        const int bins_y = Nhist[1];
+        int pathIndex = 0;
+        int histIndex = 0;
+        for (int i = 0; i < n_counts; i++) {
+            pathIndex = (int)floor(data[i]*n_path/dur);
+            histIndex = (int)floor(pathY[pathIndex]*bins_y)*bins_x+(int)floor(pathX[pathIndex]*bins_x);
+            //printf("histIndex: %i\\n",histIndex);
+            hist[histIndex]++;
+        }
+        """
+        
+    data = ionSignal.rawData
+    pathX, pathY = scanDescriptor.getXYData()
+    dur = scanDescriptor.duration*10e7
+    hist = np.zeros(bins)
+    weave.inline(f_code, ["data", "pathX", "pathY", "dur", "hist"], **opt_args)
+    
+    return hist, np.linspace(0,scanDescriptor.scanRegion.width(),bins[0],endpoint=False), np.linspace(0,scanDescriptor.scanRegion.height(),bins[1],endpoint=False)
 
 
 def addTimestamp(fname):
