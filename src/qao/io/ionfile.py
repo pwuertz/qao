@@ -140,7 +140,7 @@ class IonSignalFile():
         if not keepOpen:
             self.closeFile()
     
-    def getScanDescriptor(self,name,keepOpen=False):
+    def getScanDescriptor(self,name,keepOpen=False,patternPath=None):
         metadata = self.getScanMetadata(name,keepOpen=keepOpen)
         x = float(metadata['x'].split(" ")[0])
         y = float(metadata['y'].split(" ")[0])
@@ -151,11 +151,14 @@ class IonSignalFile():
         pat = metadata['Pattern']
         sr = float(metadata['Samples'].split(" ")[0])*1e3/dur
         sd = ScanDescriptor(name,ScanRegion(x,y,w,h,rotation=rot/180*np.pi),dur,samplerate=sr)
+        if patternPath:
+            sd.loadSegmentsFromFile("%s/%s"%(patternPath,pat),sr)
         return sd  
 
 class IonMeasurement():
-    def __init__(self,dirname):
+    def __init__(self,dirname,patternPath = None):
         self.ionSignalFiles = {} 
+        self.patternPath = patternPath
         listing = os.listdir(dirname)
         for infile in listing:
             if infile.split('.')[-1] not in ["h5", "hdf", "hdf5"]: continue
@@ -171,8 +174,13 @@ class IonMeasurement():
         
         for name in self.ionSignalFiles.values()[0].scanNames:
             self.scansMetadata.update({name:isf.getScanMetadata(name)})
-            self.scanDescriptors.update({name:isf.getScanDescriptor(name)})
-            
+            self.scanDescriptors.update({name:isf.getScanDescriptor(name,patternPath=patternPath)})
+    
+    def getTimestamps(self):
+        return self.ionSignalFiles.keys()
+    
+    def getScanDescriptor(self,name):
+        return self.scanDescriptors[name]        
             
     def getEvents(self,seqTimestamps,name):
         iontimes = np.empty(0)
@@ -188,7 +196,7 @@ class IonMeasurement():
         return len(self.ionSignalFiles)
     
     def getAllEvents(self,name):
-        return self.getEvents(self.ionSignalFiles.keys(),name)
+        return self.getEvents(self.getTimestamps(),name)
         
     def getHistogram(self,seqTimestamp,name,bins):
         return np.histogram(self.getEvents(seqTimestamp,name)/100,bins = bins)
@@ -198,3 +206,12 @@ class IonMeasurement():
         
     def getHistogramSumAll(self,name,bins):
         return np.histogram(self.getAllEvents(name)/100,bins = bins)
+
+    def getImage(self,seqTimestamps,name,bins):
+        if not self.patternPath: raise Exception("No pattern Path supplied, can not create image")
+        ionSignal = IonSignal(self.scansMetadata[name]["seqTimestamp"],0,self.getEvents(seqTimestamps,name))
+        return createIonImage(self.scanDescriptors[name],ionSignal,bins)
+    
+    def getImageAll(self,name,bins):
+        return self.getImage(self.getTimestamps(),name,bins)
+
