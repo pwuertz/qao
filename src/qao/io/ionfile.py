@@ -1,4 +1,5 @@
 from qao.devices.TicoMCS import IonScanSequence,IonSignal
+from qao.basics.ScanBasics import Unit,ScanRegion,ScanDescriptor
 import os,h5py
 import numpy as np
 import copy
@@ -131,14 +132,26 @@ class IonSignalFile():
         #del(self.fh)
         #self.fh = None
         return
-
+    
     def getScanMetadata(self,name,keepOpen=False):
         if not self.fh:
             self.openFile()
         return dict(self.fh["%s_data"%name].attrs)
         if not keepOpen:
             self.closeFile()
-        
+    
+    def getScanDescriptor(self,name,keepOpen=False):
+        metadata = self.getScanMetadata(name,keepOpen=keepOpen)
+        x = float(metadata['x'].split(" ")[0])
+        y = float(metadata['y'].split(" ")[0])
+        w = float(metadata['Width'].split(" ")[0])
+        h = float(metadata['Height'].split(" ")[0])
+        dur = float(metadata['Duration'].split(" ")[0])*1e-3
+        rot = float(metadata['Rotation'].split(" ")[0])
+        pat = metadata['Pattern']
+        sr = float(metadata['Samples'].split(" ")[0])*1e3/dur
+        sd = ScanDescriptor(name,ScanRegion(x,y,w,h,rotation=rot/180*np.pi),dur,samplerate=sr)
+        return sd  
 
 class IonMeasurement():
     def __init__(self,dirname):
@@ -154,9 +167,12 @@ class IonMeasurement():
         
         #extract names of scans an their scan descriptors
         self.scansMetadata = {}
-        print len(self.ionSignalFiles.values())
+        self.scanDescriptors = {}
+        
         for name in self.ionSignalFiles.values()[0].scanNames:
             self.scansMetadata.update({name:isf.getScanMetadata(name)})
+            self.scanDescriptors.update({name:isf.getScanDescriptor(name)})
+            
             
     def getEvents(self,seqTimestamps,name):
         iontimes = np.empty(0)
