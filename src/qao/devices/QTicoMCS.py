@@ -8,7 +8,7 @@ class QTicoMCS(TicoMCS, QtCore.QObject):
 	statusChanged = QtCore.pyqtSignal(int)
 
 	def __init__(self,adwinDeviceNo=0x150):
-		TicoMCS.__init__(self,self._handleNewData,self._handleStatusChanged)
+		TicoMCS.__init__(self,self._handleNewData,self._handleStatusChanged,adwinDeviceNo=adwinDeviceNo)
 		QtCore.QObject.__init__(self)
 		self.start()
 
