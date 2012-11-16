@@ -203,13 +203,13 @@ class ScanDescriptor:
     def clearSegments(self):
         self.segsCh1 = []
         self.segsCh2 = []
-
+    """
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
         del odict['segsCh1']         # remove segments
         del odict['segsCh2']         # remove segments
         return odict
-
+    """
     def __eq__(self,other):
         return self.scanRegion == other.scanRegion\
             and self.name == other.name\
@@ -232,9 +232,8 @@ class ScanSequence:
         if scan.samplerate != self.samplerate:
             raise Exception("Samplerate of the scan %s does not match the samplerate of the sequence"%(scan.name))
         if not scan.scanRegion.unit == self.unit:
-            print scan.scanRegion.unit
-            print self.unit
-            
+            print scan.scanRegion.unit.name
+            print self.unit.name
             raise Exception("Unit of the scan %s does not match the unit of the sequence"%(scan.name))
         self.scans.append(scan)
         
