@@ -203,13 +203,7 @@ class ScanDescriptor:
     def clearSegments(self):
         self.segsCh1 = []
         self.segsCh2 = []
-    """
-    def __getstate__(self):
-        odict = self.__dict__.copy() # copy the dict since we change it
-        del odict['segsCh1']         # remove segments
-        del odict['segsCh2']         # remove segments
-        return odict
-    """
+    
     def __eq__(self,other):
         return self.scanRegion == other.scanRegion\
             and self.name == other.name\
