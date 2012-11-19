@@ -180,7 +180,10 @@ class IonMeasurement():
         
         for name in self.ionSignalFiles.values()[0].scanNames:
             self.scansMetadata.update({name:isf.getScanMetadata(name)})
-            self.scanDescriptors.update({name:isf.getScanDescriptor(name,patternPath=patternPath)})
+            try:
+                self.scanDescriptors.update({name:isf.getScanDescriptor(name,patternPath=patternPath)})
+            except:
+                print "could not reconstruct scan descriptor from measurement"
     
     def getTimestamps(self):
         return self.ionSignalFiles.keys()
