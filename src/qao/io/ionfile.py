@@ -194,9 +194,10 @@ class IonMeasurement():
     def getEvents(self,seqTimestamps,name):
         iontimes = np.empty(0)
         #TODO: list conprehension
-        for seqTimestamp,isf in self.ionSignalFiles.items():
-            if not isf.seqTimestamp in seqTimestamps: continue
-            ionSignal = isf.getIonSignal(name)
+        for seqTimestamp in seqTimestamps:
+            seqTimestamp = int(seqTimestamp)
+            if not self.ionSignalFiles.has_key(seqTimestamp): continue
+            ionSignal = self.ionSignalFiles[seqTimestamp].getIonSignal(name)
             if not ionSignal: continue
             iontimes = np.append(iontimes,ionSignal.rawData+np.ones(len(ionSignal.rawData))*self.ionDelay)
         return iontimes
