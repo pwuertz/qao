@@ -161,9 +161,10 @@ class IonSignalFile():
         return sd  
 
 class IonMeasurement():
-    def __init__(self,dirname,patternPath = None):
+    def __init__(self,dirname,patternPath = None, ionDelay = 0):
         self.ionSignalFiles = {} 
         self.patternPath = patternPath
+        self.ionDelay = ionDelay
         listing = os.listdir(dirname)
         for infile in listing:
             if infile.split('.')[-1] not in ["h5", "hdf", "hdf5"]: continue
@@ -194,7 +195,7 @@ class IonMeasurement():
             if not isf.seqTimestamp in seqTimestamps: continue
             ionSignal = isf.getIonSignal(name)
             if not ionSignal: continue
-            iontimes = np.append(iontimes,ionSignal.rawData)
+            iontimes = np.append(iontimes,ionSignal.rawData+np.ones(len(ionSignal.rawData))*self.ionDelay)
         return iontimes
     
     def getNumRuns(self):
