@@ -190,9 +190,13 @@ class IonMeasurement():
     
     def getScanDescriptor(self,name):
         return self.scanDescriptors[name]        
-            
-    def getEvents(self,seqTimestamps,name):
+     
+    def getNumRuns(self):
+        return len(self.ionSignalFiles)
+    
+    def getEvents(self,name,seqTimestamps=None):
         iontimes = np.empty(0)
+        if seqTimestamps == None: seqTimestamps = self.getTimestamps()
         #TODO: list conprehension
         for seqTimestamp in seqTimestamps:
             seqTimestamp = int(seqTimestamp)
@@ -202,25 +206,12 @@ class IonMeasurement():
             iontimes = np.append(iontimes,ionSignal.rawData+np.ones(len(ionSignal.rawData))*self.ionDelay)
         return iontimes
     
-    def getNumRuns(self):
-        return len(self.ionSignalFiles)
-    
-    def getAllEvents(self,name):
-        return self.getEvents(self.getTimestamps(),name)
-        
-    def getHistogram(self,seqTimestamp,name,bins):
-        return np.histogram(self.getEvents(seqTimestamp,name)/100,bins = bins)
-    
-    def getHistogramSum(self,seqTimestamps,name,bins):
-        return np.histogram(self.getEvents(seqTimestamps,name)/100,bins = bins)
-        
-    def getHistogramSumAll(self,name,bins):
-        return np.histogram(self.getAllEvents(name)/100,bins = bins)
-
-    def getImage(self,seqTimestamps,name,bins):
+    def getHistogram(self,name,bins,seqTimestamps=None):
+        if seqTimestamps == None: seqTimestamps = self.getTimestamps()
+        return np.histogram(self.getEvents(name,seqTimestamps)/100,bins = bins)
+   
+    def getImage(self,name,bins,seqTimestamps=None):
         if not self.patternPath: raise Exception("No pattern Path supplied, can not create image")
-        ionSignal = IonSignal(self.scansMetadata[name]["seqTimestamp"],0,self.getEvents(seqTimestamps,name))
+        if seqTimestamps == None: seqTimestamps = self.getTimestamps()
+        ionSignal = IonSignal(self.scansMetadata[name]["seqTimestamp"],0,self.getEvents(name,seqTimestamps))
         return createIonImage(self.scanDescriptors[name],ionSignal,bins)
-    
-    def getImageAll(self,name,bins):
-        return self.getImage(self.getTimestamps(),name,bins)
