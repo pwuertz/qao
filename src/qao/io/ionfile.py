@@ -14,6 +14,8 @@ DEFAULT_TYPE_NPY = np.double
 DEFAULT_TYPE_C = "double"
 DEFAULT_TYPEDEFC = "typedef {0} float_type;\n".format(DEFAULT_TYPE_C)
 
+class DataTooLongException(BaseException):
+    pass
 
 def createIonImage(scanDescriptor,ionSignal,bins):
     slowImage, slowxedges, slowyedges = createIonImageSlow(scanDescriptor,ionSignal,bins)
@@ -197,7 +199,7 @@ class IonMeasurement():
     def getEvents(self,name,seqTimestamps=None):
         iontimes = np.empty(0)
         if seqTimestamps == None: seqTimestamps = self.getTimestamps()
-        #TODO: list conprehension
+        #TODO: list comprehension
         for seqTimestamp in seqTimestamps:
             seqTimestamp = int(seqTimestamp)
             if not self.ionSignalFiles.has_key(seqTimestamp): continue
