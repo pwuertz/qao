@@ -1,5 +1,6 @@
 from qao.devices.TicoMCS import IonScanSequence,IonSignal
 from qao.basics.ScanBasics import Unit,ScanRegion,ScanDescriptor
+from qao.io import CSVReader
 import os,h5py
 import numpy as np
 import copy
@@ -163,10 +164,18 @@ class IonSignalFile():
         return sd  
 
 class IonMeasurement():
-    def __init__(self,dirname,patternPath = None, ionDelay = 0):
+    def __init__(self,dirname,patternPath = None, ionDelay = 0, csvFile = None):
         self.ionSignalFiles = {} 
         self.patternPath = patternPath
         self.ionDelay = ionDelay
+        seqTimestamps = []
+        if csvFile != None:
+            try:
+                reader = CSVReader.IACSVReader(csvFile)
+                seqTimestamps = reader.getData(["seqTimestamp"])[0]
+            except:
+                print "could not open specified csv file: %s"%csvFile
+                    
         listing = os.listdir(dirname)
         for infile in listing:
             if infile.split('.')[-1] not in ["h5", "hdf", "hdf5"]: continue
@@ -174,6 +183,8 @@ class IonMeasurement():
                 isf = IonSignalFile("%s%s"%(dirname,infile))
             except:
                 continue            
+            if len(seqTimestamps) > 0 and str(isf.seqTimestamp) not in seqTimestamps: 
+                continue
             self.ionSignalFiles.update({isf.seqTimestamp:isf})
         
         #extract names of scans an their scan descriptors
