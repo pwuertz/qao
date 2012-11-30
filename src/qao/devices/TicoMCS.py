@@ -8,7 +8,7 @@ import threading
 import time
 
 # Data from the awinmcb_readout process
-slotNum = 5
+slotNum = 10
 buffersize = 1000000
 
 num_new_data = 2
