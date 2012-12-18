@@ -19,9 +19,9 @@ class ExpDecay(LevmarFitter):
     def f(self, pars):
         # for given set of pars, calculate the fit function
         A, tau, off = pars
-        x = np.arange(data.size, dtype = DEFAULT_TYPE_NPY)
+        x = np.arange(self.data.size, dtype = DEFAULT_TYPE_NPY)
         self._f[:] = A * np.exp(-x/tau)+off
-    
+
     def fJ(self, pars):
         # for given set of pars, calculate the fit function...
         A, tau, off = pars
@@ -29,10 +29,10 @@ class ExpDecay(LevmarFitter):
         self._f[:] = A * np.exp(-x/tau)+off
         
         # ...and the derivatives for the jacobian 
-        self._J[0, :] = self._f[:]
-        self._J[1, :] = -1/(tau) * self._f[:]
-        self._J[2, :] = 1/(tau**2) * self._f[:]
-        
+        self._J[0, :] = 1/A *(self._f[:]-off)
+        self._J[1, :] = x/(tau)**2  * (self._f[:]-off)
+        self._J[2, :] = 1
+
 if __name__ == "__main__":
         
     def expdec(x, pars):
@@ -41,9 +41,9 @@ if __name__ == "__main__":
 
 
     n = 250
-    X = np.linspace(0,n,100)
+    X = np.linspace(0,n,n)
     
-    pars_org = np.asfarray([10,10,0])
+    pars_org = np.asfarray([10,5,0])
     
     data_org = expdec(X,  pars_org)
         
@@ -53,6 +53,7 @@ if __name__ == "__main__":
     data_ini = expdec(X, pars_ini)
     pars_fit = fitter.fit(pars_ini)
     print pars_fit
+    print  fitter.getFitLog()
     data_fit = expdec(X, pars_fit)
     
     """
