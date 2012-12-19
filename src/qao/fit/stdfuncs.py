@@ -1,7 +1,7 @@
 from qao.fit.fitter import LevmarFitter, DEFAULT_TYPE_NPY
 import numpy as np
 
-class ExpDecay(LevmarFitter):
+class ExpDecayOffs(LevmarFitter):
     def __init__(self, data):
         LevmarFitter.__init__(self, ["A", "tau", "off"], data)
     
@@ -15,12 +15,6 @@ class ExpDecay(LevmarFitter):
         var = ((np.arange(data.size)-x0)**2 * data).sum() * (1./dsum)
         # return guess
         return np.asfarray([amp, x0, 0], dtype = DEFAULT_TYPE_NPY)
-    
-    def f(self, pars):
-        # for given set of pars, calculate the fit function
-        A, tau, off = pars
-        x = np.arange(self.data.size, dtype = DEFAULT_TYPE_NPY)
-        self._f[:] = A * np.exp(-x/tau)+off
 
     def fJ(self, pars):
         # for given set of pars, calculate the fit function...
@@ -32,6 +26,31 @@ class ExpDecay(LevmarFitter):
         self._J[0, :] = 1/A *(self._f[:]-off)
         self._J[1, :] = x/(tau)**2  * (self._f[:]-off)
         self._J[2, :] = 1
+
+class ExpDecay(LevmarFitter):
+    def __init__(self, data):
+        LevmarFitter.__init__(self, ["A", "tau"], data)
+    
+    def guess(self):
+        # determine maximum value
+        data = self.data
+        amp  = np.max(data)
+        # calculate mean and variance
+        dsum = np.sum(data)
+        x0  = (np.arange(data.size) * data).sum() * (1./dsum)
+        var = ((np.arange(data.size)-x0)**2 * data).sum() * (1./dsum)
+        # return guess
+        return np.asfarray([amp, x0], dtype = DEFAULT_TYPE_NPY)
+
+    def fJ(self, pars):
+        # for given set of pars, calculate the fit function...
+        A, tau = pars
+        x = np.arange(self.data.size, dtype = DEFAULT_TYPE_NPY)
+        self._f[:] = A * np.exp(-x/tau)
+        
+        # ...and the derivatives for the jacobian 
+        self._J[0, :] = 1/A *(self._f[:])
+        self._J[1, :] = x/(tau)**2  * (self._f[:])
 
 if __name__ == "__main__":
         
