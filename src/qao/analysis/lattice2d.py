@@ -16,8 +16,92 @@ functions operate on numpy arrays.
 import warnings
 import numpy as np
 from scipy import optimize
+from scipy import ndimage
 
 import qao.utils as utils
+
+def mask_angles_near_kvec(phi, kvec, delta_deg=20):
+    kphi  = np.arctan2(kvec[0], kvec[1])
+    mask1 = np.abs(utils.angle_diff(phi, kphi))       < (delta_deg*np.pi/180.)
+    mask2 = np.abs(utils.angle_diff(phi, kphi+np.pi)) < (delta_deg*np.pi/180.)
+    return mask1 + mask2
+
+def mask_radii_notnear_kvec(r, kvec, r_fraction=.2):
+    kr = np.sqrt(kvec[0]**2 + kvec[1]**2)
+    mask1 = (r > kr*(1.+r_fraction))
+    mask2 = (r < kr*(1.-r_fraction))
+    return mask1 + mask2
+
+def maximum_position(power_masked, kx, ky):
+    # estimate the maximum by parabolic->gaussian interpolation of pixels
+    dkx, dky = kx[0,1]-kx[0,0], ky[1,0]-ky[0,0]
+    iy_max, ix_max = ndimage.maximum_position(power_masked)
+    data_roi = power_masked.data[iy_max-1:iy_max+2, ix_max-1:ix_max+2]
+    x0, y0, z0 = utils.parab_interpolation(np.log(data_roi), 1, 1)
+    k_vec = np.array([(x0+ix_max-1)*dkx + kx[0, 0], (y0+iy_max-1)*dky + ky[0, 0]])
+    amp = np.exp(z0)
+    return k_vec, amp
+
+def power_spectra(data_list, edges = False, normalized=True):
+    """
+    Calculate the (normalized) power spectra for each 2d-array in data_list.
+    Return a list and the sum of all power spectra.
+    """
+    h, w = data_list[0].shape
+    
+    # data must be zero padded for non periodic signals
+    zero_padded_data = np.zeros([2*h, 2*w], dtype = float)
+    power_spec_sum = np.zeros([2*h, 2*w], dtype = float)
+    
+    # calculate all |fft|^2 images
+    power_list = []
+    for data in data_list:
+        zero_padded_data[h/2:h/2+h, w/2:w/2+w] = data
+        power_spec = np.abs(np.fft.fft2(zero_padded_data))**2
+        if normalized: power_spec *= 1./power_spec[0,0]
+        power_spec_sum += power_spec
+        power_list.append(np.fft.fftshift(power_spec))
+
+    if normalized: power_spec_sum *= 1./power_spec_sum[0,0]    
+    power_spec_sum = np.fft.fftshift(power_spec_sum)
+    
+    if edges: 
+        #create edges from the first data set in list
+        fx, fy = utils.fft2freq_padded(data_list[0])
+        return power_list, power_spec_sum, fx, fy
+    return power_list, power_spec_sum
+
+def search_kvecs_in_powerspec(power_spec):
+    """
+    Search for two peaks with similar radii in the power spectrum. Return
+    the k-vectors and and their amplitude. Also return the masks for
+    selecting peak1, peak2 and the noise nearby.
+    """
+    nx, ny = power_spec.shape[0]/2, power_spec.shape[1]/2
+
+    # frequency map (2*pi*f), cartesian and polar
+    dkx, dky = 2*np.pi * 1./(2*nx), 2*np.pi * 1./(2*ny)
+    ky, kx = np.ogrid[-ny:ny, -nx:nx]
+    kx, ky = kx * dkx, ky * dky
+    kr = np.sqrt(kx**2 + ky**2)
+    kphi = np.arctan2(kx, ky)
+    
+    # filter out freqs below 3 oszillations, find global max
+    kmin = 3 * 2*np.pi/min(nx,ny)
+    power_spec_masked = np.ma.array(power_spec, mask=(kr < kmin))
+    k1_f, amp1 = maximum_position(power_spec_masked, kx, ky)
+
+    # mask for finding peak at same radius but different angle
+    power_spec_masked.mask += mask_radii_notnear_kvec(kr, k1_f)
+    power_spec_masked.mask += mask_angles_near_kvec(kphi, k1_f)
+    k2_f, amp2 = maximum_position(power_spec_masked, kx, ky)
+    
+    # recreate masks for checking
+    peak1_mask = mask_radii_notnear_kvec(kr, k1_f) + ~mask_angles_near_kvec(kphi, k1_f)
+    peak2_mask = mask_radii_notnear_kvec(kr, k1_f) + ~mask_angles_near_kvec(kphi, k2_f)
+    noise_mask = mask_radii_notnear_kvec(kr, k1_f) + ~peak1_mask + ~peak2_mask
+    
+    return (k1_f, amp1), (k2_f, amp2), (peak1_mask, peak2_mask, noise_mask)
 
 def findWaveVectorsFromDataList(data_list, length_guess):
     """
