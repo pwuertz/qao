@@ -92,8 +92,8 @@ def search_kvecs_in_powerspec(power_spec):
     k1_f, amp1 = maximum_position(power_spec_masked, kx, ky)
 
     # mask for finding peak at same radius but different angle
-    power_spec_masked.mask += mask_radii_notnear_kvec(kr, k1_f)
-    power_spec_masked.mask += mask_angles_near_kvec(kphi, k1_f)
+    power_spec_masked.mask += mask_radii_notnear_kvec(kr, k1_f).transpose()
+    power_spec_masked.mask += mask_angles_near_kvec(kphi, k1_f).transpose()
     k2_f, amp2 = maximum_position(power_spec_masked, kx, ky)
     
     # recreate masks for checking
