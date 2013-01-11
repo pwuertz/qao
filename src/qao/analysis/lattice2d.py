@@ -77,7 +77,7 @@ def search_kvecs_in_powerspec(power_spec):
     the k-vectors and and their amplitude. Also return the masks for
     selecting peak1, peak2 and the noise nearby.
     """
-    nx, ny = power_spec.shape[0]/2, power_spec.shape[1]/2
+    nx, ny = power_spec.shape[1]/2, power_spec.shape[0]/2
 
     # frequency map (2*pi*f), cartesian and polar
     dkx, dky = 2*np.pi * 1./(2*nx), 2*np.pi * 1./(2*ny)
@@ -92,8 +92,8 @@ def search_kvecs_in_powerspec(power_spec):
     k1_f, amp1 = maximum_position(power_spec_masked, kx, ky)
 
     # mask for finding peak at same radius but different angle
-    power_spec_masked.mask += mask_radii_notnear_kvec(kr, k1_f).transpose()
-    power_spec_masked.mask += mask_angles_near_kvec(kphi, k1_f).transpose()
+    power_spec_masked.mask += mask_radii_notnear_kvec(kr, k1_f)
+    power_spec_masked.mask += mask_angles_near_kvec(kphi, k1_f)
     k2_f, amp2 = maximum_position(power_spec_masked, kx, ky)
     
     # recreate masks for checking
