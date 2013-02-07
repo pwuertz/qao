@@ -107,12 +107,14 @@ class IonSignalFile():
         if not self.fh:
             self.openFile()
         if name in self.scanNames:
-            if not len(self.fh["%s_data"%name]) > 0: return IonSignal(self.getScanMetadata(name)["seqTimestamp"],scanNum,[])            
-            return IonSignal(self.getScanMetadata(name)["seqTimestamp"],scanNum,self.fh["%s_data"%name])            
+            timestamp = self.getScanMetadata(name,keepOpen=True)["seqTimestamp"]
+            if not len(self.fh["%s_data"%name]) > 0: return IonSignal(timestamp,scanNum,[])            
+            iSig = IonSignal(timestamp,scanNum,np.array(self.fh["%s_data"%name])) 
+        
+        if not keepOpen: self.closeFile()
+        return iSig
             
-        if not keepOpen:
-            self.closeFile()
-
+            
     def getScanNames(self):
         return self.scanNames           
 
@@ -133,9 +135,9 @@ class IonSignalFile():
             self.fh = h5py.File(f)
     
     def closeFile(self):
-        #self.fh.close()
-        #del(self.fh)
-        #self.fh = None
+        self.fh.close()
+        del(self.fh)
+        self.fh = None
         return
     
     def getScanMetadata(self,name,keepOpen=False):
