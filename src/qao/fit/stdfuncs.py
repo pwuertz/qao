@@ -52,6 +52,31 @@ class ExpDecay(LevmarFitter):
         self._J[0, :] = 1/A *(self._f[:])
         self._J[1, :] = x/(tau)**2  * (self._f[:])
 
+class DblExpDecay(LevmarFitter):
+    def __init__(self, data):
+        LevmarFitter.__init__(self, ["A1", "tau1", "A2", "tau2"], data)
+    
+    def guess(self):
+        # determine maximum value
+        data = self.data
+        length = len(data)
+        # return guess
+        p0 = [data.max(), length/2,data.max()/5.,0]
+        p0[3] = length/2./(np.log(p0[0]/p0[2]))+p0[1]
+        return np.asfarray(p0, dtype = DEFAULT_TYPE_NPY)
+
+    def fJ(self, pars):
+        # for given set of pars, calculate the fit function...
+        A1, tau1, A2, tau2 = pars
+        x = np.arange(self.data.size, dtype = DEFAULT_TYPE_NPY)
+        self._f[:] = A1 * np.exp(-x/tau1) + A2 * np.exp(-x/tau2)
+        
+        # ...and the derivatives for the jacobian 
+        self._J[0, :] = np.exp(-x/tau1)
+        self._J[1, :] = x/(tau1)**2  * A1 * np.exp(-x/tau1)
+        self._J[2, :] = np.exp(-x/tau2)
+        self._J[3, :] = x/(tau2)**2  * A2 * np.exp(-x/tau2)
+
 if __name__ == "__main__":
         
     def expdec(x, pars):
