@@ -61,8 +61,9 @@ class DblExpDecay(LevmarFitter):
         data = self.data
         length = len(data)
         # return guess
-        p0 = [data.max(), length/2,data.max()/5.,0]
-        p0[3] = length/2./(np.log(p0[0]/p0[2]))+p0[1]
+        p0 = [data.max(), length/4.,data.max()/10.,0]
+        p0[3] = 1./(1/p0[1] - np.log(p0[0]/p0[2])/length/2)
+        #p0[3] = length/2./(np.log(p0[0]/p0[2]))+p0[1]
         return np.asfarray(p0, dtype = DEFAULT_TYPE_NPY)
 
     def fJ(self, pars):
