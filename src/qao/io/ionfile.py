@@ -110,6 +110,8 @@ class IonSignalFile():
             timestamp = self.getScanMetadata(name,keepOpen=True)["seqTimestamp"]
             if not len(self.fh["%s_data"%name]) > 0: return IonSignal(timestamp,scanNum,[])            
             iSig = IonSignal(timestamp,scanNum,np.array(self.fh["%s_data"%name])) 
+        else:
+            print "scan name not found in File %s"%(self.fname)
         
         if not keepOpen: self.closeFile()
         return iSig
@@ -143,7 +145,9 @@ class IonSignalFile():
     def getScanMetadata(self,name,keepOpen=False):
         if not self.fh:
             self.openFile()
-        return dict(self.fh["%s_data"%name].attrs)
+        metadata = dict(self.fh.attrs)
+        metadata.update(dict(self.fh["%s_data"%name].attrs)) 
+        return metadata
         if not keepOpen:
             self.closeFile()
     
@@ -193,12 +197,15 @@ class IonMeasurement():
         self.scansMetadata = {}
         self.scanDescriptors = {}
         
-        for name in self.ionSignalFiles.values()[0].scanNames:
-            self.scansMetadata.update({name:isf.getScanMetadata(name)})
-            try:
-                self.scanDescriptors.update({name:isf.getScanDescriptor(name,patternPath=patternPath)})
-            except:
-                print "could not reconstruct scan descriptor from measurement"
+        if len(self.ionSignalFiles.values())>0:
+            for name in self.ionSignalFiles.values()[0].scanNames:
+                self.scansMetadata.update({name:isf.getScanMetadata(name)})
+                try:
+                    self.scanDescriptors.update({name:isf.getScanDescriptor(name,patternPath=patternPath)})
+                except:
+                    print "could not reconstruct scan descriptor from measurement"
+        else:
+            print "no files loaded! Strange.."
     
     def getTimestamps(self):
         return self.ionSignalFiles.keys()
