@@ -30,7 +30,6 @@ class WithoutHistogram:
     .. literalinclude:: ../src/qao/analysis/prob_dist.py
         :pyobject: test_withoutHistogram
     
-    .. automethod:: __call__
     """
     
     def __init__(self, X, Y=None):

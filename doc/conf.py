@@ -31,7 +31,7 @@ extensions = ['sphinx.ext.autodoc',
               'matplotlib.sphinxext.only_directives',
               'matplotlib.sphinxext.plot_directive',
               'sphinx.ext.pngmath']
-autodoc_default_flags = ["members"]
+autodoc_default_flags = ["members", "private-members", "special-members"]
 #pngmath_latex_preamble = r"\usepackage{amsmath}"
 
 
@@ -96,6 +96,7 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+#autoclass_content = "both"
 
 # -- Options for HTML output ---------------------------------------------------
 
