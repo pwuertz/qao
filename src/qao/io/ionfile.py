@@ -112,6 +112,7 @@ class IonSignalFile():
             iSig = IonSignal(timestamp,scanNum,np.array(self.fh["%s_data"%name])) 
         else:
             print "scan name not found in File %s"%(self.fname)
+            return None
         
         if not keepOpen: self.closeFile()
         return iSig
