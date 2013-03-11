@@ -8,5 +8,6 @@ High level data analysis
 .. automodule:: qao.analysis.lattice2d
 .. automodule:: qao.analysis.prob_dist
 .. automodule:: qao.analysis.deconvolve
+.. automodule:: qao.analysis.kalman
 
 """
