@@ -108,6 +108,47 @@ class KalmanFilterBase:
         self._x = x_predict + np.dot(K, innov)
         self._P = P_predict - np.dot(np.dot(K, H), P_predict)
 
+    def _rts_smoother(self, z_array):
+        r"""
+        This method implements a Kalman smoother according to the RTS algorithm 
+        http://en.wikipedia.org/wiki/Kalman_filter#Rauch.E2.80.93Tung.E2.80.93Striebel .
+        The difference between the smoother and the filter is the knowledge
+        of all measurements in advance, thus providing ideal results for
+        given datasets.
+        
+        :param z_array: Array of measurement vectors.
+        :returns: Array of estimated internal states for each measurement.
+        """
+        z_array = np.asarray(z_array)
+        kmax = z_array.shape[0] - 1
+        x_k_given_  = np.zeros([kmax+1, self._x.size])
+        x_k1_given_ = np.zeros([kmax+1, self._x.size])
+        P_k_given_  = np.zeros([kmax+1, self._x.size, self._x.size])
+        P_k1_given_ = np.zeros([kmax+1, self._x.size, self._x.size])
+        x_given_kmax_  = np.zeros([kmax+1, self._x.size])
+        P_given_kmax_  = np.zeros([kmax+1, self._x.size, self._x.size])
+        
+        # forward pass
+        for k, z in enumerate(z_array):
+            self._measurement_update(z)
+            x_k_given_[k] = self._x
+            P_k_given_[k] = self._P
+            x, P = f._predict_state()
+            x_k1_given_[k] = x
+            P_k1_given_[k] = P
+            
+        # backward pass
+        x_given_kmax_[kmax] = x_k_given_[kmax]
+        P_given_kmax_[kmax] = P_k_given_[kmax]
+        for k in range(0, kmax)[::-1]:
+            xdiff = x_given_kmax_[k+1] - x_k1_given_[k]
+            Pdiff = P_given_kmax_[k+1] - P_k1_given_[k]
+            C = np.dot(np.dot(P_k_given_[k], f._F.T), np.linalg.inv(P_k1_given_[k]))
+            x_given_kmax_[k] = x_k_given_[k] + np.dot(C, xdiff)
+            P_given_kmax_[k] = P_k_given_[k] + np.dot(np.dot(C, Pdiff), C.T)
+        
+        return x_given_kmax_
+
 
 class LinearSystem(KalmanFilterBase):
     r"""
@@ -235,10 +276,13 @@ class PeriodicLinearSystem(LinearSystem):
         Update the position of the system based on a new measurement. The
         measurement is automatically mapped to the periodicity of the system.
         """
+        self._measurement_update(np.array(pos_meas))
+    
+    def _measurement_update(self, pos_meas):
         pos = LinearSystem.predicted_pos(self)
         diff = pos_meas - pos
         diff_normalized = ((diff + .5*self.L) % self.L) - .5*self.L
-        LinearSystem.add_pos_measurement(self, pos + diff_normalized)
+        LinearSystem._measurement_update(self, pos + diff_normalized)
 
 
 if __name__ == "__main__":
@@ -260,11 +304,15 @@ if __name__ == "__main__":
         f.add_pos_measurement(y)
         data_estimate.append(f.current_pos())
     
+    # rts smooth data
+    data_smooth = [x[0] for x in f._rts_smoother(data)]
+    
     # plot result
+    plt.figure(figsize=(10,5))
     plt.plot(X, data_orig, "b--", label="original data")
-    plt.plot(X, data, "b-", label="data + noise")
-    plt.plot(X, data_predict, "r-", label="kalman prediction")
-    plt.plot(X, data_estimate, "r--", label="kalman estimate")
+    plt.plot(X, data, "k-", label="data + noise")
+    plt.plot(X, data_predict, "r-", label="kalman predict")
+    plt.plot(X, data_smooth, "g-", label="kalman smooth")
     plt.legend()
     plt.show()
     
