@@ -133,7 +133,7 @@ class KalmanFilterBase:
             self._measurement_update(z)
             x_k_given_[k] = self._x
             P_k_given_[k] = self._P
-            x, P = f._predict_state()
+            x, P = self._predict_state()
             x_k1_given_[k] = x
             P_k1_given_[k] = P
             
@@ -143,7 +143,7 @@ class KalmanFilterBase:
         for k in range(0, kmax)[::-1]:
             xdiff = x_given_kmax_[k+1] - x_k1_given_[k]
             Pdiff = P_given_kmax_[k+1] - P_k1_given_[k]
-            C = np.dot(np.dot(P_k_given_[k], f._F.T), np.linalg.inv(P_k1_given_[k]))
+            C = np.dot(np.dot(P_k_given_[k], self._F.T), np.linalg.inv(P_k1_given_[k]))
             x_given_kmax_[k] = x_k_given_[k] + np.dot(C, xdiff)
             P_given_kmax_[k] = P_k_given_[k] + np.dot(np.dot(C, Pdiff), C.T)
         
