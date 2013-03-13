@@ -305,7 +305,8 @@ if __name__ == "__main__":
         data_estimate.append(f.current_pos())
     
     # rts smooth data
-    data_smooth = [x[0] for x in f._rts_smoother(data)]
+    states_smooth = f._rts_smoother(data)
+    data_smooth = np.inner(states_smooth, f._H) # H projects states to data
     
     # plot result
     plt.figure(figsize=(10,5))
