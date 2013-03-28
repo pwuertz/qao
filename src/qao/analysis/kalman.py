@@ -108,15 +108,28 @@ class KalmanFilterBase:
         self._x = x_predict + np.dot(K, innov)
         self._P = P_predict - np.dot(np.dot(K, H), P_predict)
 
-    def _rts_smoother(self, z_array):
+    def _rts_smoother(self, z_array, callback=None):
         r"""
-        This method implements a Kalman smoother according to the RTS algorithm 
-        http://en.wikipedia.org/wiki/Kalman_filter#Rauch.E2.80.93Tung.E2.80.93Striebel .
+        This method implements a Kalman smoother according to the 
+        `RTS algorithm <http://en.wikipedia.org/wiki/Kalman_filter#Rauch.E2.80.93Tung.E2.80.93Striebel>`_.
         The difference between the smoother and the filter is the knowledge
         of all measurements in advance, thus providing ideal results for
         given datasets.
         
+        The RTS algorithm is a two-pass method. In the forward pass, the
+        state vectors :math:`\vec{x}_k` and error covariances :math:`P_k`
+        are estimated for measurements up to :math:`\vec{z}_k`. Given the
+        information of all measurements up to :math:`\vec{z}_{kmax}`, a
+        a reverse pass now calculates new state estimates that are returned
+        as an (kmax+1, n) array.
+        
+        For each measurement point :math:`\vec{z}_k` that is applied in the
+        forward pass, a callback function can be used to modify the internal
+        parameters of the filter.
+        
         :param z_array: Array of measurement vectors.
+        :param callback: Function `cb(kfilter, k, z)` for changing the filter
+            parameters at :math:`\vec{z}_k`.
         :returns: Array of estimated internal states for each measurement.
         """
         z_array = np.asarray(z_array)
@@ -130,6 +143,7 @@ class KalmanFilterBase:
         
         # forward pass
         for k, z in enumerate(z_array):
+            if callback: callback(self, k, z)
             self._measurement_update(z)
             x_k_given_[k] = self._x
             P_k_given_[k] = self._P
@@ -290,7 +304,7 @@ if __name__ == "__main__":
 
     # create test data
     sig_noise = .2
-    X = np.linspace(-1, 1, 100)
+    X = np.linspace(-1, 1, 150)
     data_orig = np.cos(X * 2*np.pi)
     data = data_orig + np.random.normal(0, sig_noise, X.size)
     
