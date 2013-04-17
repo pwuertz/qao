@@ -155,7 +155,7 @@ class KalmanFilterBase:
         x_given_kmax_[kmax] = x_k_given_[kmax]
         P_given_kmax_[kmax] = P_k_given_[kmax]
         for k in range(0, kmax)[::-1]:
-            if callback: callback(self, k, z)
+            if callback: callback(self, k+1, z_array[k+1])
             xdiff = x_given_kmax_[k+1] - x_k1_given_[k]
             Pdiff = P_given_kmax_[k+1] - P_k1_given_[k]
             C = np.dot(np.dot(P_k_given_[k], self._F.T), np.linalg.inv(P_k1_given_[k]))
