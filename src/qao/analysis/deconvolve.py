@@ -1,6 +1,6 @@
 """
 Deconvolve
----------
+----------
 
 Algorithms for the deconvolution of ion signals and images.
 
