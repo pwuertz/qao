@@ -1,6 +1,9 @@
 """
 Utility functions
 =================
+
+The :mod:`utils` module contains functions that have proven to be useful but
+are too general for being categorized (yet).
 """
 
 import bz2
@@ -156,15 +159,15 @@ def findMostFrequent(data):
     return (elements[index],max(bincount))
 
 def unique_mean(xdata, *ydatas):
-    """
+    foo = """
     Sort `xdata` and return only unique elements. Calculate the average
     of values in `ydata` for multiple occurrences of values in `xdata`.
-    
+
     This is particulary useful for arranging data for analysis and plotting,
     since multiple occurrences of values in `xdata` can be interpreted as
     multiple measurements of the same data point, which you might want to
     average.
-    
+
     :param xdata: (ndarray) x-values
     :param ydatas: (ndarray) multiple arrays of y-values
     :returns:
@@ -232,9 +235,7 @@ def shift(data, pixels_x, pixels_y):
     :param pixels_y: (int) Move by n pixels upwards. 
     :returns: (ndarray) Shifted image.
     
-    .. note::
-    
-        This method should be deprecated in favor of :func:`scipy.ndimage.shift`
+    .. note:: This method is deprecated in favor of :func:`scipy.ndimage.shift`
     """
     pixels_x = round(pixels_x)
     pixels_y = round(pixels_y)
@@ -413,9 +414,7 @@ def nploadbz(fname):
     
 def rotate(data, degrees):
     """
-    .. note::
-    
-        This function is just an alias to :func:`scipy.ndimage.rotate` now.
+    .. note:: This method is deprecated in favor of :func:`scipy.ndimage.rotate`.
     """
     return ndimage.rotate(data, degrees)
 
