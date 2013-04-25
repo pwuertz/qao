@@ -37,13 +37,13 @@ class VoltageSupply:
         return self._readChannelsProperty_(chanList,'ISet')
 
     def writeISet(self,voltDict):
-        self._writeChannelsProperty_(voltDict,'ITrip')
+        self._writeChannelsProperty_(voltDict,'ISet')
 
     def readITrip(self, chanList):
         return self._readChannelsProperty_(chanList,'ITrip')
 
     def writeITrip(self,voltDict):
-        self._writeChannelsProperty_(voltDict,'ISet')
+        self._writeChannelsProperty_(voltDict,'ITrip')
 
     def readIMeas(self, chanList):
         return self._readChannelsProperty_(chanList,'IMeas')
