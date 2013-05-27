@@ -319,8 +319,9 @@ class DataTable(QtCore.QObject):
             # enlarge data and column info table
             pos = len(self.colInfo)
             newColInfo = (name, set(), "object", "")
-            self.colInfo = np.insert(self.colInfo, pos, newColInfo)
-            self.data    = np.insert(self.data   , pos, None, axis=1)
+            self.colInfo = np.insert(self.colInfo, pos, [(0, 0, 0, 0)])
+            self.colInfo[pos] = newColInfo
+            self.data = np.insert(self.data, pos, [None], axis=1)
             # signal new column
             self.colInserted.emit(pos)
     
@@ -588,7 +589,7 @@ class DataTable(QtCore.QObject):
         else:
             # idval not found, insert row
             row = np.searchsorted(self.data[:,0], idval)
-            self.data = np.insert(self.data, row, None, axis=0)
+            self.data = np.insert(self.data, row, [None], axis=0)
             self.data[row, 0] = idval
         
         # finally insert data to row
