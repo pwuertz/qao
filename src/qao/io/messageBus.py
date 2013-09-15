@@ -46,6 +46,8 @@ if __name__ == "__main__":
 
 import sys
 import cPickle
+import simplejson as json
+
 try:
     from PyQt4 import QtCore, QtNetwork
     from PyQt4.QtCore import pyqtSignal as qtSignal
@@ -202,7 +204,7 @@ class MessageBusClient(QtCore.QObject):
         
     def _sendPacket(self, data):
         stream = QtCore.QDataStream(self.connection)
-        dataSer = cPickle.dumps(data, -1)
+        dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
         stream.writeUInt32(len(dataSer))
         nWritten = stream.writeRawData(dataSer)
 
@@ -222,7 +224,11 @@ class MessageBusClient(QtCore.QObject):
 
     def _handleNewPacket(self, dataRaw):
         try:
-            data = cPickle.loads(dataRaw)
+            try:
+                data = json.loads(dataRaw)
+            except Exception, e:
+                print("no valid json data received: falling back to old pickle decoding")
+                data = cPickle.loads(dataRaw)
             if len(data) < 2:
                 raise Exception("packet with insufficient number of args")
             
@@ -261,7 +267,7 @@ class ServerClientConnection(QtCore.QObject):
         
     def _sendPacket(self, data):
         stream = QtCore.QDataStream(self.connection)
-        dataSer = cPickle.dumps(data, -1)
+        dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
         stream.writeUInt32(len(dataSer))
         nWritten = stream.writeRawData(dataSer)
     
@@ -281,7 +287,11 @@ class ServerClientConnection(QtCore.QObject):
 
     def _handleNewPacket(self, dataRaw):
         try:
-            data = cPickle.loads(dataRaw)
+            try:
+                data = json.loads(dataRaw)
+            except Exception, e:
+                print("no valid json data received: falling back to old pickle decoding")
+                data = cPickle.loads(dataRaw)
             
             if len(data) < 2:
                 raise Exception("packet with insufficient number of args")

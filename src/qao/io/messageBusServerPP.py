@@ -1,5 +1,6 @@
 from qao.io import messageBusPP as messageBus
 import socket,cPickle,select
+import simplejson as json
 
 
 class ServerClientConnection(messageBus.TcpPkgClient):
@@ -17,12 +18,17 @@ class ServerClientConnection(messageBus.TcpPkgClient):
         return self.clientSock.fileno()
     
     def _sendPacketPickled(self,data):
-        self._sendPacket(cPickle.dumps(data, -1))
+        self._sendPacket(json.dumps(data, separators=(',', ':'), sort_keys=True))
     
     def _recvPacketPickled(self):
         try:
             dataRaw = self._recvPacket()
-            data = cPickle.loads(dataRaw)
+            print dataRaw
+            try:
+                data = json.loads(dataRaw)
+            except Exception, e:
+                print("no valid json data received: falling back to old pickle decoding")
+                data = cPickle.loads(dataRaw)
             
             if len(data) < 2:
                 raise Exception("packet with insufficient number of args")
@@ -51,6 +57,8 @@ class ServerClientConnection(messageBus.TcpPkgClient):
             errorstr = type(e).__name__ + ", " + str(e)
             # notify the client about the error
             self._sendPacketPickled([messageBus.TYPE_NAK, errorstr])
+
+                
             # print the error server side
             print "error reading packet:", errorstr
 
@@ -82,9 +90,13 @@ class MessageBusServer():
         #needed for select
         return self.serverSock.fileno()
     
+    def disconnectClient(self,client):
+        self.clients.remove(client)
+        del(client)
+        
     def _handleDisconnect(self):
         client = self.sender()
-        self.clients.remove(client)
+        self.disconnectClient(client)
 
 if __name__ == "__main__":
     import time
@@ -103,13 +115,19 @@ if __name__ == "__main__":
         checkConns.extend(server.clients)
         
         #print checkConns
-        readyConns = select.select(checkConns,[],[])
-        print readyConns
+        readyConns = select.select(checkConns,[],[],1)
+        print "check"
+
         clientConns = [client for client in readyConns[0] if isinstance(client,ServerClientConnection)]
         serverConns = [client for client in readyConns[0] if isinstance(client,MessageBusServer)]
         for server in serverConns:
             print "handle new connection"
             server._handleNewConnection()
         for client in clientConns:
-            client._recvPacketPickled()
+            try:
+                print "read data"
+                client._recvPacketPickled()
+            except:
+                print "client disconnected. Removing it!"
+                server.disconnectClient(client)
     client.disconnectFromServer()

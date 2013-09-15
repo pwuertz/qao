@@ -1,5 +1,6 @@
 import socket,struct,cPickle,select,sys
 import time #for profiling
+import simplejson as json
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 9090
@@ -85,13 +86,17 @@ class MessageBusClient(TcpPkgClient):
         if topic in self.subscriptionCallbacks: self.subscriptionCallbacks[topic](topic,data)
 
     def _sendPacketPickled(self,data):
-        self._sendPacket(cPickle.dumps(data, -1))
+        self._sendPacket(json.dumps(data, separators=(',', ':'), sort_keys=True))
         
     def _recvPacketPickled(self):
         try:
             dataRaw = self._recvPacket()
             #picklestarttime = time.time()
-            data = cPickle.loads(dataRaw)
+            try:
+                data = json.loads(dataRaw)
+            except Exception, e:
+                print("no valid json data received: falling back to old pickle decoding")
+                data = cPickle.loads(dataRaw)
             #print "Depickle took %.2f s"%(time.time()-picklestarttime)
             if len(data) < 2:
                 raise Exception("packet with insufficient number of args")
@@ -123,7 +128,7 @@ if __name__ == "__main__":
     import time
     
     def printdummy(topic,data):
-        print "%s: %s (Dauer:%.2f)"%(topic,data[0],time.time()-float(data[1]))
+        print "%s: %s (Data:%.2f)"%(topic,data[0],float(data[1]))
 
     #initiate client connection
     client = MessageBusClient()
@@ -131,7 +136,7 @@ if __name__ == "__main__":
     
     #subscribe and publish first event
     client.subscribe("testing",callback=printdummy)
-    client.publishEvent("testing",["foo","1.0"])
+    client.publishEvent("testing",["foo","31.0"])
 
     print "starting main loop"
     
