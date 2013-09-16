@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
 import sys
 import cPickle
-import simplejson as json
+import json
 
 try:
     from PyQt4 import QtCore, QtNetwork

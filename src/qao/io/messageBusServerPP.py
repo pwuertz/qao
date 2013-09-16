@@ -1,6 +1,6 @@
 from qao.io import messageBusPP as messageBus
 import socket,cPickle,select
-import simplejson as json
+import json
 
 
 class ServerClientConnection(messageBus.TcpPkgClient):

@@ -1,6 +1,6 @@
 import socket,struct,cPickle,select,sys
 import time #for profiling
-import simplejson as json
+import json
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 9090
