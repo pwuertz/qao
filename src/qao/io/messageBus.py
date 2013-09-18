@@ -47,6 +47,8 @@ if __name__ == "__main__":
 import sys
 import cPickle
 import json
+import websocket
+import os
 
 try:
     from PyQt4 import QtCore, QtNetwork
@@ -112,8 +114,12 @@ class MessageBusClient(QtCore.QObject):
         self.connection.connected.connect(self.connected)
         self.connection.disconnected.connect(self.disconnected)
         self.connection.readyRead.connect(self._handleReadyRead)
+        self.handshakeDone = False
         self.packetSize = 0
         self.packetBuffer = ""
+        self.currentFrame = websocket.Frame()
+        self.neededBytes = next(self.currentFrame.parser)
+        self.httpHeader = websocket.HTTPHeader()
         
         self.subscriptionCallbacks = {}
         
@@ -129,6 +135,7 @@ class MessageBusClient(QtCore.QObject):
         if not self.connection.waitForConnected(timeout):
             self.disconnected.emit()
             raise Exception("no connection to event server")
+        self._sendHeader()
     
     def disconnectFromServer(self):
         """
@@ -198,6 +205,14 @@ class MessageBusClient(QtCore.QObject):
         while self.connection.bytesToWrite() > 0:
             self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
     
+    def _sendHeader(self):
+        stream = QtCore.QDataStream(self.connection)
+        hdr = websocket.DefaultHTTPClientHeader()
+        nWritten = stream.writeRawData(hdr.createHeader())
+        while self.connection.bytesToWrite() > 0:
+            self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
+        
+    
     def handleEvent(self, topic, data):
         self.receivedEvent.emit(topic, data)
         if topic in self.subscriptionCallbacks: self.subscriptionCallbacks[topic](data)         
@@ -205,23 +220,28 @@ class MessageBusClient(QtCore.QObject):
     def _sendPacket(self, data):
         stream = QtCore.QDataStream(self.connection)
         dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
-        stream.writeUInt32(len(dataSer))
-        nWritten = stream.writeRawData(dataSer)
-
+        frm = websocket.Frame(websocket.OPCODE_ASCII,dataSer,mask=os.urandom(4),fin=1)
+        nWritten = stream.writeRawData(frm.build())
+    
     def _handleReadyRead(self):
         while self.connection.bytesAvailable() > 0:
-            # if the last packet was complete, read the size of the next
-            if self.packetSize == 0:
-                if self.connection.bytesAvailable() < 4: return
-                stream = QtCore.QDataStream(self.connection)
-                self.packetSize   = stream.readUInt32()
-            
-            # if the packet is not complete, wait for more data
-            if self.connection.bytesAvailable() < self.packetSize: return
-            packet = str(self.connection.read(self.packetSize))
-            self._handleNewPacket(packet)
-            self.packetSize = 0
-
+            if not self.handshakeDone:
+                while self.connection.canReadLine():
+                    try:
+                        line = self.connection.readLine()
+                        self.httpHeader.parser.send(str(QtCore.QString(line)))
+                    except StopIteration:
+                        self.handshakeDone=True
+                        break
+            else:
+                try:
+                    if self.connection.bytesAvailable() < self.neededBytes: return
+                    self.neededBytes = self.currentFrame.parser.send(str(self.connection.read(self.neededBytes)))
+                except StopIteration:
+                    self._handleNewPacket(self.currentFrame.data)
+                    self.currentFrame = websocket.Frame()
+                    self.neededBytes = next(self.currentFrame.parser)
+                    
     def _handleNewPacket(self, dataRaw):
         try:
             try:
