@@ -1,4 +1,8 @@
-from qao.io import messageBus
+import numpy as np
+import base64
+import sys
+sys.path.append("../src/qao/io")
+import messageBus
 try:
     from PyQt4 import QtCore, QtNetwork
     from PyQt4.QtCore import pyqtSignal as qtSignal
@@ -14,27 +18,27 @@ class ConsoleClient(messageBus.MessageBusClient):
 		messageBus.MessageBusClient.__init__(self)
 		self.receivedEvent.connect(self.printEventReceived)
 		self.i=0
-		m=1920
-		n=1080
-		self.hugematrix = [[None for x in range(m)] for x in range(n)]
+		m=1000
+		n=1000
+		self.hugematrix = np.random.rand(m,n)
 		
 	def printEventReceived(self, topic, data):
 		print "%s: %s (Dauer:%.2f)"%(topic,data[0],time.time()-float(data[1]))
 		
-		serv.publishEvent("testing",[self.i,time.time(),self.hugematrix])
+		self.publishEvent("testing",[self.i,time.time(),base64.b64encode(self.hugematrix)])
 		self.i +=1
 
 app = QtCore.QCoreApplication([])
 
 #define new client
-serv = ConsoleClient()
-serv.connectToServer("localhost")
+client = ConsoleClient()
+client.connectToServer("localhost",9999)
 
 #subscribe
-serv.subscribe("testing")
+client.subscribe("testing")
 
 #publish event
-serv.publishEvent("testing",["foo","1.0"])
+client.publishEvent("testing",["foo","1.0"])
 
 
 
