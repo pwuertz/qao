@@ -11,7 +11,7 @@ OPCODE_PING         = 0x9
 OPCODE_PONG         = 0xA
 
 def xor(data,mask):
-    return ''.join([chr(ord(data[i]) ^ ord(mask[i%4]))for i in xrange(len(data))])
+    return ''.join([chr(ord(data[i]) ^ mask[i%4])for i in xrange(len(data))])
 
 class HTTPHeader(object):
     def __init__(self,requestLine='', attr={}):
@@ -26,7 +26,6 @@ class HTTPHeader(object):
         for key, value in self.attr.items():
             header = "%s%s: %s\r\n"%(header,key,value)
         header = "%s\r\n"%header
-        print header
         return header
     
     def readHeader(self):
@@ -41,12 +40,12 @@ class HTTPHeader(object):
                 print "could not interpret header line: %s: %s"%(line,e)
     
     def buildServerReply(self):
-        header = 'HTTP/1.1 101 Switching Protocols\r\n'
+        header = 'HTTP/1.1 101 Switching Protocols'
         answerAttributes = {'Upgrade': 'websocket', 'Connection': 'Upgrade'}
         
         #calculate 'Sec-WebSocket-Accept'
-        assert 'Sec-WebSocket-Key' in self.header
-        shaedKey = sha.new("%s%s"%(self.header['Sec-WebSocket-Key'],GUID))
+        assert 'Sec-WebSocket-Key' in self.attr
+        shaedKey = sha.new("%s%s"%(self.attr['Sec-WebSocket-Key'],GUID))
         replyKey = base64.b64encode(shaedKey.digest())
         answerAttributes.update({'Sec-WebSocket-Accept':replyKey})
         
@@ -119,7 +118,7 @@ class Frame(object):
     def _parse(self):
         data = {}
         recvData = (yield 2)
-        
+
         self.fin            = (ord(recvData[0]) & 0b10000000) >> 7 == 1
         self.rsv1           = (ord(recvData[0]) & 0b01000000) >> 6
         self.rsv1           = (ord(recvData[0]) & 0b00100000) >> 5
