@@ -85,7 +85,7 @@ def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
     c.publishEvent(topic, data)
     c.waitForEventPublished()
     
-class MessageBusCommunicator():
+class MessageBusCommunicator(QtCore.QObject):
     def __init__():
         self.currentFrame = websocket.Frame()
         self.neededBytes = next(self.currentFrame.parser)
@@ -128,7 +128,7 @@ class MessageBusCommunicator():
     def _handleHeaderReceived(self):
         raise NotImplementedError("Implement _handleHeaderReceived()")
 
-class MessageBusClient(QtCore.QObject, MessageBusCommunicator):
+class MessageBusClient(MessageBusCommunicator):
     """
     Class for sending/receiving data to/from the messageBus.
     
@@ -274,7 +274,7 @@ class MessageBusClient(QtCore.QObject, MessageBusCommunicator):
             errorstr = type(e).__name__ + ", " + str(e)
             sys.stderr.write(errorstr + "\n")
 
-class ServerClientConnection(QtCore.QObject, MessageBusCommunicator):
+class ServerClientConnection(MessageBusCommunicator):
     
     eventPublished = qtSignal(str, object)
     disconnected = qtSignal()
