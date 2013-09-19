@@ -14,9 +14,9 @@ def xor(data,mask):
     return ''.join([chr(ord(data[i]) ^ ord(mask[i%4]))for i in xrange(len(data))])
 
 class HTTPHeader(object):
-    def __init__(self):
-        self.attr = {}
-        self.requestLine = ''
+    def __init__(self,requestLine='', attr={}):
+        self.attr = attr
+        self.requestLine = requestLine
         self.parser = self.readHeader()
         next(self.parser)
 
@@ -39,6 +39,20 @@ class HTTPHeader(object):
                 self.attr.update({key.strip("\n\r\t "):value.strip("\n\r\t ")})
             except Exception, e:
                 print "could not interpret header line: %s: %s"%(line,e)
+    
+    def buildServerReply(self):
+        header = 'HTTP/1.1 101 Switching Protocols\r\n'
+        answerAttributes = {'Upgrade': 'websocket', 'Connection': 'Upgrade'}
+        
+        #calculate 'Sec-WebSocket-Accept'
+        assert 'Sec-WebSocket-Key' in self.header
+        shaedKey = sha.new("%s%s"%(self.header['Sec-WebSocket-Key'],GUID))
+        replyKey = base64.b64encode(shaedKey.digest())
+        answerAttributes.update({'Sec-WebSocket-Accept':replyKey})
+        
+        hdr = HTTPHeader(header,answerAttributes)
+        return hdr
+        
 
 
 class DefaultHTTPClientHeader(HTTPHeader):

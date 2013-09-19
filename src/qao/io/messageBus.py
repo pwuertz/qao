@@ -84,8 +84,51 @@ def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
     c.connectToServer(hostname, port)
     c.publishEvent(topic, data)
     c.waitForEventPublished()
+    
+class MessageBusCommunicator():
+    def __init__():
+        self.currentFrame = websocket.Frame()
+        self.neededBytes = next(self.currentFrame.parser)
+        self.httpHeader = websocket.HTTPHeader()
+        self.handshakeDone = False
+    
+    def _send(self,RawData, blocking=False):
+        stream = QtCore.QDataStream(self.connection)
+        if blocking:
+            while self.connection.bytesToWrite() > 0:
+                self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
+        return stream.writeRawData(RawData)
+        
+    def _sendPacket(self, data):
+        dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
+        frm = websocket.Frame(websocket.OPCODE_ASCII,dataSer,mask=os.urandom(4),fin=1)
+        nWritten = self._send(frm.build())
+        
+    
+    def _handleReadyRead(self):
+        while self.connection.bytesAvailable() > 0:
+            if not self.handshakeDone:
+                while self.connection.canReadLine():
+                    try:
+                        line = self.connection.readLine()
+                        self.httpHeader.parser.send(str(QtCore.QString(line)))
+                    except StopIteration:
+                        self.handshakeDone=True
+                        self._handleHeaderReceived(self.httpHeader)
+                        break
+            else:
+                try:
+                    if self.connection.bytesAvailable() < self.neededBytes: return
+                    self.neededBytes = self.currentFrame.parser.send(str(self.connection.read(self.neededBytes)))
+                except StopIteration:
+                    self._handleNewPacket(self.currentFrame.data)
+                    self.currentFrame = websocket.Frame()
+                    self.neededBytes = next(self.currentFrame.parser)
+                    
+    def _handleHeaderReceived(self):
+        raise NotImplementedError("Implement _handleHeaderReceived()")
 
-class MessageBusClient(QtCore.QObject):
+class MessageBusClient(QtCore.QObject, MessageBusCommunicator):
     """
     Class for sending/receiving data to/from the messageBus.
     
@@ -110,16 +153,11 @@ class MessageBusClient(QtCore.QObject):
     
     def __init__(self):
         QtCore.QObject.__init__(self)
+        MessageBusCommunicator.__init__(self)
         self.connection = QtNetwork.QTcpSocket()
         self.connection.connected.connect(self.connected)
         self.connection.disconnected.connect(self.disconnected)
         self.connection.readyRead.connect(self._handleReadyRead)
-        self.handshakeDone = False
-        self.packetSize = 0
-        self.packetBuffer = ""
-        self.currentFrame = websocket.Frame()
-        self.neededBytes = next(self.currentFrame.parser)
-        self.httpHeader = websocket.HTTPHeader()
         
         self.subscriptionCallbacks = {}
         
@@ -206,42 +244,14 @@ class MessageBusClient(QtCore.QObject):
             self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
     
     def _sendHeader(self):
-        stream = QtCore.QDataStream(self.connection)
         hdr = websocket.DefaultHTTPClientHeader()
-        nWritten = stream.writeRawData(hdr.createHeader())
-        while self.connection.bytesToWrite() > 0:
-            self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
+        nWritten = self._send(hdr.createHeader(),blocking=True)
         
     
     def handleEvent(self, topic, data):
         self.receivedEvent.emit(topic, data)
         if topic in self.subscriptionCallbacks: self.subscriptionCallbacks[topic](data)         
         
-    def _sendPacket(self, data):
-        stream = QtCore.QDataStream(self.connection)
-        dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
-        frm = websocket.Frame(websocket.OPCODE_ASCII,dataSer,mask=os.urandom(4),fin=1)
-        nWritten = stream.writeRawData(frm.build())
-    
-    def _handleReadyRead(self):
-        while self.connection.bytesAvailable() > 0:
-            if not self.handshakeDone:
-                while self.connection.canReadLine():
-                    try:
-                        line = self.connection.readLine()
-                        self.httpHeader.parser.send(str(QtCore.QString(line)))
-                    except StopIteration:
-                        self.handshakeDone=True
-                        break
-            else:
-                try:
-                    if self.connection.bytesAvailable() < self.neededBytes: return
-                    self.neededBytes = self.currentFrame.parser.send(str(self.connection.read(self.neededBytes)))
-                except StopIteration:
-                    self._handleNewPacket(self.currentFrame.data)
-                    self.currentFrame = websocket.Frame()
-                    self.neededBytes = next(self.currentFrame.parser)
-                    
     def _handleNewPacket(self, dataRaw):
         try:
             try:
@@ -264,13 +274,14 @@ class MessageBusClient(QtCore.QObject):
             errorstr = type(e).__name__ + ", " + str(e)
             sys.stderr.write(errorstr + "\n")
 
-class ServerClientConnection(QtCore.QObject):
+class ServerClientConnection(QtCore.QObject, MessageBusCommunicator):
     
     eventPublished = qtSignal(str, object)
     disconnected = qtSignal()
     
     def __init__(self, connection):
         QtCore.QObject.__init__(self)
+        MessageBusCommunicator.__init__()
         self.connection = connection
         self.connection.disconnected.connect(self.disconnected)
         self.connection.readyRead.connect(self._handleReadyRead)
@@ -284,27 +295,10 @@ class ServerClientConnection(QtCore.QObject):
             print "Out of memory"
             print hp.heap()
             exit()
-        
-    def _sendPacket(self, data):
-        stream = QtCore.QDataStream(self.connection)
-        dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
-        stream.writeUInt32(len(dataSer))
-        nWritten = stream.writeRawData(dataSer)
-    
-    def _handleReadyRead(self):
-        while self.connection.bytesAvailable() > 0:
-            # if the last packet was complete, read the size of the next
-            if self.packetSize == 0:
-                if self.connection.bytesAvailable() < 4: return
-                stream = QtCore.QDataStream(self.connection)
-                self.packetSize   = stream.readUInt32()
-            
-            # if the packet is not complete, wait for more data
-            if self.connection.bytesAvailable() < self.packetSize: return
-            packet = str(self.connection.read(self.packetSize))
-            self._handleNewPacket(packet)
-            self.packetSize = 0
 
+    def _handleHeaderReceived(self,httpHeader):
+        self._send(httpHeader.buildServerReply().createHeader())
+        
     def _handleNewPacket(self, dataRaw):
         try:
             try:
