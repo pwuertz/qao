@@ -162,7 +162,6 @@ class MessageBusClient(MessageBusCommunicator):
     def __init__(self):
         MessageBusCommunicator.__init__(self)
         self.connection = QtNetwork.QTcpSocket()
-        self.connection.connected.connect(self.connected)
         self.connection.disconnected.connect(self.disconnected)
         self.connection.readyRead.connect(self._handleReadyRead)
         
@@ -263,6 +262,7 @@ class MessageBusClient(MessageBusCommunicator):
 
     def _handleHeaderReceived(self,httpHeader):
         #TODO: check header received from the server
+        self.connected.emit()
         pass
         
     def _handleNewPacket(self, dataRaw):
