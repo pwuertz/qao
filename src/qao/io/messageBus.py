@@ -57,7 +57,7 @@ except ImportError:
     from PySide import QtCore, QtNetwork
     from PySide.QtCore import Signal as qtSignal
 
-DEFAULT_PORT = 9090
+DEFAULT_PORT = 9999
 DEFAULT_TIMEOUT = 5000
 
 TYPE_SUBSCRIBE   = "subscribe"
@@ -86,7 +86,9 @@ def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
     c.waitForEventPublished()
     
 class MessageBusCommunicator(QtCore.QObject):
-    def __init__():
+    def __init__(self, masking=False):
+        QtCore.QObject.__init__(self)
+        self.masking = masking
         self.currentFrame = websocket.Frame()
         self.neededBytes = next(self.currentFrame.parser)
         self.httpHeader = websocket.HTTPHeader()
@@ -101,7 +103,10 @@ class MessageBusCommunicator(QtCore.QObject):
         
     def _sendPacket(self, data):
         dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
-        frm = websocket.Frame(websocket.OPCODE_ASCII,dataSer,mask=os.urandom(4),fin=1)
+        if self.masking:
+            frm = websocket.Frame(websocket.OPCODE_ASCII,dataSer,mask=os.urandom(4),fin=1)
+        else:
+            frm = websocket.Frame(websocket.OPCODE_ASCII,dataSer,fin=1)
         nWritten = self._send(frm.build())
         
     
@@ -152,7 +157,6 @@ class MessageBusClient(MessageBusCommunicator):
     disconnected = qtSignal()
     
     def __init__(self):
-        QtCore.QObject.__init__(self)
         MessageBusCommunicator.__init__(self)
         self.connection = QtNetwork.QTcpSocket()
         self.connection.connected.connect(self.connected)
@@ -251,6 +255,10 @@ class MessageBusClient(MessageBusCommunicator):
     def handleEvent(self, topic, data):
         self.receivedEvent.emit(topic, data)
         if topic in self.subscriptionCallbacks: self.subscriptionCallbacks[topic](data)         
+
+    def _handleHeaderReceived(self,httpHeader):
+        #TODO: check header received from the server
+        pass
         
     def _handleNewPacket(self, dataRaw):
         try:
@@ -280,8 +288,7 @@ class ServerClientConnection(MessageBusCommunicator):
     disconnected = qtSignal()
     
     def __init__(self, connection):
-        QtCore.QObject.__init__(self)
-        MessageBusCommunicator.__init__()
+        MessageBusCommunicator.__init__(self)
         self.connection = connection
         self.connection.disconnected.connect(self.disconnected)
         self.connection.readyRead.connect(self._handleReadyRead)
@@ -301,11 +308,7 @@ class ServerClientConnection(MessageBusCommunicator):
         
     def _handleNewPacket(self, dataRaw):
         try:
-            try:
-                data = json.loads(dataRaw)
-            except Exception, e:
-                print("no valid json data received: falling back to old pickle decoding")
-                data = cPickle.loads(dataRaw)
+            data = json.loads(dataRaw)
             
             if len(data) < 2:
                 raise Exception("packet with insufficient number of args")

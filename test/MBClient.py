@@ -18,8 +18,8 @@ class ConsoleClient(messageBus.MessageBusClient):
 		messageBus.MessageBusClient.__init__(self)
 		self.receivedEvent.connect(self.printEventReceived)
 		self.i=0
-		m=1000
-		n=1000
+		m=1920
+		n=1080
 		self.hugematrix = np.random.rand(m,n)
 		
 	def printEventReceived(self, topic, data):

@@ -109,7 +109,7 @@ class Frame(object):
             
         if self.mask != None:
             byteList.extend(list(self.mask))
-            self.payload = xor(self.data,self.mask)
+            self.payload = xor(self.data,struct.unpack(">BBBB",self.mask))
         else:
             self.payload = self.data
         byteList[1] = chr(byteList[1]) 
