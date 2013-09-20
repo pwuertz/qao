@@ -32,7 +32,7 @@ app = QtCore.QCoreApplication([])
 
 #define new client
 client = ConsoleClient()
-client.connectToServer("localhost",9999)
+client.connectToServer("localhost",9090)
 
 #subscribe
 client.subscribe("testing")

@@ -57,7 +57,7 @@ except ImportError:
     from PySide import QtCore, QtNetwork
     from PySide.QtCore import Signal as qtSignal
 
-DEFAULT_PORT = 9999
+DEFAULT_PORT = 9090
 DEFAULT_TIMEOUT = 5000
 
 TYPE_SUBSCRIBE   = "subscribe"
