@@ -72,6 +72,10 @@ class MessageBusClient(WebSocketCommunicator):
         except Exception, e:
             errorstr = type(e).__name__ + ", " + str(e)
             sys.stderr.write(errorstr + "\n")
+            
+    def handleEvent(self):
+        #keep this function for compatibility reasons
+        self._recvData()
 
 
 class QMessageBusClient(MessageBusClient):
