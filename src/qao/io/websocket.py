@@ -106,12 +106,14 @@ class Frame(object):
             byteList.extend(struct.pack(">H",self.length))
         else:
             byteList[1] += self.length
+            
         if self.mask != None:
             byteList.extend(list(self.mask))
             self.payload = xor(self.data,self.mask)
         else:
             self.payload = self.data
-        byteList[1] = chr(byteList[1])   
+        byteList[1] = chr(byteList[1]) 
+          
         return ''.join(byteList)+self.payload
         
     
@@ -119,12 +121,12 @@ class Frame(object):
         data = {}
         recvData = (yield 2)
 
-        self.fin            = (ord(recvData[0]) & 0b10000000) >> 7 == 1
+        self.fin            = (ord(recvData[0]) & 0b10000000) >> 7 
         self.rsv1           = (ord(recvData[0]) & 0b01000000) >> 6
         self.rsv1           = (ord(recvData[0]) & 0b00100000) >> 5
         self.rsv1           = (ord(recvData[0]) & 0b00010000) >> 4
         self.opCode         = (ord(recvData[0]) & 0b00001111)
-        self.maskBit        = (ord(recvData[1]) & 0b10000000) >> 7 == 1
+        self.maskBit        = (ord(recvData[1]) & 0b10000000) >> 7
         self.length         = (ord(recvData[1]) & 0b01111111)
     
         if self.length == 126:
