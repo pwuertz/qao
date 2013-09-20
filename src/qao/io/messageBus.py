@@ -267,11 +267,8 @@ class MessageBusClient(MessageBusCommunicator):
         
     def _handleNewPacket(self, dataRaw):
         try:
-            try:
-                data = json.loads(dataRaw)
-            except Exception, e:
-                print("no valid json data received: falling back to old pickle decoding")
-                data = cPickle.loads(dataRaw)
+            data = json.loads(dataRaw)
+
             if len(data) < 2:
                 raise Exception("packet with insufficient number of args")
             
