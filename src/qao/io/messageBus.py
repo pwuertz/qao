@@ -89,6 +89,9 @@ class MessageBusCommunicator(QtCore.QObject):
     def __init__(self, masking=False):
         QtCore.QObject.__init__(self)
         self.masking = masking
+        self._cleanupCommunicator_()
+    
+    def _cleanupCommunicator_(self):
         self.currentFrame = websocket.Frame()
         self.neededBytes = next(self.currentFrame.parser)
         self.httpHeader = websocket.HTTPHeader()
@@ -183,6 +186,8 @@ class MessageBusClient(MessageBusCommunicator):
         """
         Disconnect the client from the current messageBus server.
         """
+        self._cleanupCommunicator_()
+        self.subscriptionCallbacks={}
         self.connection.disconnectFromHost()
     
     def isConnected(self):
