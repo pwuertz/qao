@@ -96,6 +96,7 @@ class MessageBusCommunicator(QtCore.QObject):
         self.neededBytes = next(self.currentFrame.parser)
         self.httpHeader = websocket.HTTPHeader()
         self.handshakeDone = False
+        self.incompleteData = ''
     
     def _send(self,RawData, blocking=False):
         stream = QtCore.QDataStream(self.connection)
@@ -103,14 +104,18 @@ class MessageBusCommunicator(QtCore.QObject):
             while self.connection.bytesToWrite() > 0:
                 self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
         return stream.writeRawData(RawData)
-        
-    def _sendPacket(self, data):
-        dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
-        if self.masking:
-            frm = websocket.Frame(websocket.OPCODE_ASCII,dataSer,mask=os.urandom(4),fin=1)
-        else:
-            frm = websocket.Frame(websocket.OPCODE_ASCII,dataSer,fin=1)
+    
+    def _sendFrame_(self,data, opCode):
+        mask = os.urandom(4) if self.masking else None
+        frm = websocket.Frame(opCode,data,mask=os.urandom(4),fin=1)
         nWritten = self._send(frm.build())
+        
+    def _sendPacket(self, data, binary = False):
+        if len(data) <= 0: return
+        opCode = websocket.OPCODE_BINARY if binary else websocket.OPCODE_ASCII
+        dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
+        self._sendFrame_(dataSer,opCode)
+        
         
     
     def _handleReadyRead(self):
@@ -129,10 +134,36 @@ class MessageBusCommunicator(QtCore.QObject):
                     if self.connection.bytesAvailable() < self.neededBytes: return
                     self.neededBytes = self.currentFrame.parser.send(str(self.connection.read(self.neededBytes)))
                 except StopIteration:
-                    self._handleNewPacket(self.currentFrame.data)
+                    self._handleFrame_(self.currentFrame)
                     self.currentFrame = websocket.Frame()
                     self.neededBytes = next(self.currentFrame.parser)
+
+    def _pong_(self):
+        self._sendFrame_('',websocket.OPCODE_PONG)
+        
+    def ping(self):
+        self._sendFrame_('',websocket.OPCODE_PING)
                     
+    def _handleFrame_(self,frm):
+        if frm.opCode == websocket.OPCODE_CLOSE:
+            print "Disconnect Packet received. Cleaning up Communicator and wait for disconnect."
+            self._cleanupCommunicator_()
+            return
+        
+        if frm.opCode == websocket.OPCODE_PING:
+            self._pong_()
+            return
+            
+        if frm.opCode == websocket.OPCODE_ASCII or frm.opCode == websocket.OPCODE_BINARY:
+            self.incompleteData = "%s%s"%(self.incompleteData, frm.data)
+            if frm.fin == 1:
+                self._handleNewPacket(self.incompleteData)
+                self.incompleteData = ''
+        
+        
+    def _handleNewPacket(self):
+        raise NotImplementedError("Implement _handleNewPacket()")
+    
     def _handleHeaderReceived(self):
         raise NotImplementedError("Implement _handleHeaderReceived()")
 
