@@ -192,7 +192,7 @@ class IonMeasurement():
                 continue            
             if len(seqTimestamps) > 0 and str(isf.seqTimestamp) not in seqTimestamps: 
                 continue
-            self.ionSignalFiles.update({isf.seqTimestamp:isf})
+            self.ionSignalFiles.update({int(isf.seqTimestamp):isf})
         
         #extract names of scans an their scan descriptors
         self.scansMetadata = {}
