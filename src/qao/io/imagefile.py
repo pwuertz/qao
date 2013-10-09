@@ -94,6 +94,28 @@ def loadAbsorptionImage(filename):
     fh.close()
     return images.pop("absImage"), images, metadata
 
+
+def ndarrayBase64Encode(ndarray):
+    '''
+    converts a numpy.ndarray to base64 with dtype and shape information
+    returns [dtype,base64 encoded ndarray, shape]
+    :param ndarray: numpy.ndarray
+    '''
+    import base64
+    return [str(ndarray.dtype),base64.b64encode(ndarray),ndarray.shape]
+            
+def ndarrayBase64Decode(encodedData):
+    '''
+    creates numpy.ndarray from list[dtype,base64encoded ndarray, [shape]] 
+    :param encodedData:list[dtype,base64encoded ndarray, [shape]] shape is optional
+    '''
+    import base64,numpy
+    dtype = numpy.dtype(encodedData[0])
+    arr = numpy.frombuffer(base64.decodestring(encodedData[1]),dtype)
+    if len(encodedData) > 2:
+        return arr.reshape(encodedData[2])
+    return arr
+        
 if __name__ == '__main__':
     import tempfile
     fname = os.path.join(tempfile.gettempdir(), "test.h5") 

@@ -84,7 +84,7 @@ def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
     c.connectToServer(hostname, port)
     c.publishEvent(topic, data)
     c.waitForEventPublished()
-    
+
 class MessageBusCommunicator(QtCore.QObject):
     def __init__(self, masking=False):
         QtCore.QObject.__init__(self)
@@ -410,7 +410,7 @@ class MessageBusServer(QtCore.QObject):
         self.clientDisconnected.emit(client)
         self.clients.remove(client)
         print "client disconnected (active connections: %d)" % len(self.clients)
-
+        
 if __name__ == "__main__":
     # enable CTRL+C break
     import signal
