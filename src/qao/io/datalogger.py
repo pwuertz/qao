@@ -84,7 +84,6 @@ def simpleLogData(data,messageBus,messageBusPort=DEFAULT_PORT):
     simplePublish(DALOG_TOPIC, data, messageBus,messageBusPort)
 
 class DataLogServer(QtCore.QObject):
-    __PROTECTEDKEYS__ = ['_rev','_id']
         
     def __init__(self,couchHost=DALOG_COUCH_HOST,couchPort=DALOG_COUCH_PORT,database=DALOG_COUCH_BASE,logTime=DALOG_INTERVAL):
         self.couchHost = couchHost
@@ -95,18 +94,33 @@ class DataLogServer(QtCore.QObject):
         self.couch = couchdb.client.Server("http://%s:%i"%(couchHost,couchPort)) 
         self.db = self.couch[database]
         self.data = {"timestamp":0}
+        self.lastStoredData = self.data
         self.subscriptions = {}
         self.mbus = MessageBusClient()
+        self.__PROTECTEDKEYS__ = (['_rev','_id'])
     
+    def isConnected(self):
+        return self.mbus.isConnected()
+            
     def connectToMessageBus(self,messageBusHost,messageBusPort=DEFAULT_PORT):
         #create the messagbus to listen to
-        self.mbus.connectToServer("localhost")
+        self.mbus.connectToServer(messageBusHost)
         if(not self.mbus.isConnected()):
             raise Exception('Error: Could not connect to messageBus')
         #data topic where data is published
-        self.mbus.subscribe(DALOG_TOPIC, self.addDict)
-        self.mbus.subscribe(DALOG_COMMAND, self.commandHandler)
-    
+        self._subscribe(DALOG_TOPIC, self.addDict)
+        self._subscribe(DALOG_COMMAND, self.commandHandler)
+        
+    def disconnectFromServer(self):
+        '''
+        disconnect From MessageBus
+        '''
+        self.mbus.disconnectFromServer()
+        
+    def _subscribe(self,topic,callback):
+        self.mbus.subscribe(topic, callback)
+        self.mbus.waitForEventPublished()
+        
     def start(self):
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.logTime*1000.0)
@@ -115,6 +129,12 @@ class DataLogServer(QtCore.QObject):
         
     @staticmethod
     def setup(couchHost=DALOG_COUCH_HOST,couchPort=DALOG_COUCH_PORT,database=DALOG_COUCH_BASE):
+        '''
+        this method create a database for logging
+        :param couchHost:
+        :param couchPort:
+        :param database:
+        '''
         couch = couchdb.client.Server("http://%s:%i"%(couchHost,couchPort))
         db = None
         for _db in couch:
@@ -126,7 +146,7 @@ class DataLogServer(QtCore.QObject):
             db = couch.create(database)
             print "created db %s"%db.name
             
-    def __cleanUp(self):
+    def _cleanUp(self):
         '''
         this cleanup is necessary in order to prevent data from being overwritten
         '''
@@ -138,9 +158,10 @@ class DataLogServer(QtCore.QObject):
         ''' assign the current timestamp '''
         self.data["timestamp"] = int(time.time())
         ''' and remove couchdb reserved keys '''
-        self.__cleanUp()
-        self.db.save(self.data)
-        self.logged.emit(self.data)
+        self.lastStoredData = self.data
+        self._cleanUp()
+        self.db.save(self.lastStoredData)
+        self.logged.emit(self.lastStoredData)
         ''' reset the data '''
         self.data = {}
         
@@ -148,8 +169,8 @@ class DataLogServer(QtCore.QObject):
         '''
         adds a dictionary with its contents to the storage
         '''
-        for key in data:
-            self.data[key] = data[key]
+        print 'new Data: %s'%data.keys()
+        self.data.update(data)
             
     def addData(self,key,value):
         '''
@@ -157,6 +178,7 @@ class DataLogServer(QtCore.QObject):
         :param key:
         :param value:
         '''
+        print 'new Data: %s'%key
         if(key not in self.__PROTECTEDKEYS__):
             self.data[key] = value
         else:
@@ -177,31 +199,57 @@ class DataLogServer(QtCore.QObject):
             self.remove(data[1])
         elif cmd == DALOG_CMD_IGNORE:
             self.ignore(data[1])
+        elif cmd == DALOG_CMD_UNIGNORE:
+            self.unignore(data[1])
     
     def ignore(self,key):
+        '''
+        will ignore all data with this key
+        '''
         self.__PROTECTEDKEYS__.append(key)
         
     def unignore(self,key):
+        '''
+        Logger will stop ignoring this key 
+        '''
         if key in self.__PROTECTEDKEYS__:
             self.__PROTECTEDKEYS__.remove(key)
     
     def remove(self,key):
+        '''
+        removes currently available data
+        '''
         if(key in self.data):
             del self.data[key]
-            
+                       
     def publish(self):
-        self.mbus.publishEvent(DALOG_PUBLISH, self.data)
+        '''
+        Will publish current available data
+        '''
+        self.lastStoredData.update(self.data)
+        self.mbus.publishEvent(DALOG_PUBLISH, self.lastStoredData)
     
     def subscribe(self,topic,key=None):
+        '''
+        Datalogger will subscribe the topic and store it to the key
+        :param topic: topic to subscribe
+        :param key: keyword for data storage if data is a keyValuePair. Otherwise value is assumed to be a dictionary 
+        '''
         if(key == None):
-            key = topic
-        self.subscriptions[topic] = key
-        self.mbus.subscribe(topic,lambda value: self.addData(key,value))
+            self.subscriptions[topic] = topic
+            self._subscribe(topic,lambda value: self.addDict(value))
+        else:
+            self.subscriptions[topic] = key
+            self._subscribe(topic,lambda value: self.addData(key,value))
+            
         
     def unsubscribe(self,topic):
-        self.mbus.unsubscribe(topic)
-        del self.data[self.subscriptions[topic]]
-        del self.subscriptions[topic]
+        '''
+        will stop the logging of posted data on a specific topic
+        '''
+        if topic in self.subscriptions:
+            self.mbus.unsubscribe(topic)
+            del self.subscriptions[topic]
         
 class DataLogClient(QtCore.QObject):
     '''
@@ -226,6 +274,12 @@ class DataLogClient(QtCore.QObject):
         self.key = key
         self.callback = None
     
+    def disconnectFromServer(self):
+        '''
+        disconnect From MessageBus
+        '''
+        self.mbus.disconnectFromServer()
+        
     def connectToMessageBus(self,host,port=DEFAULT_PORT): 
         '''
         Connect the client to a messageBus server.
@@ -235,7 +289,7 @@ class DataLogClient(QtCore.QObject):
         '''
         self.mbus.connectToServer(host,port)
     
-    def tellSubscribe(self,topic,key):
+    def tellSubscribe(self,topic,key=None):
         '''
         
         tell Datalog server to listen to the specified topic and use the key for identification
@@ -243,7 +297,8 @@ class DataLogClient(QtCore.QObject):
         :param topic: (str) topic to publish on messagebus
         :param key: (str) key to store data in datbase
         '''
-        self.mbus.publishEvent(DALOG_COMMAND,[DALOG_CMD_SUBSCRIBE,topic,key])
+        topic = str(topic)
+        self._publish(DALOG_COMMAND,[DALOG_CMD_SUBSCRIBE,topic,key])
         
     def tellUnsubscribe(self,topic):
         '''
@@ -251,14 +306,14 @@ class DataLogClient(QtCore.QObject):
         
         :param topic: (str) topic to publish on messagebus
         '''
-        self.mbus.publishEvent(DALOG_COMMAND,[DALOG_CMD_UNSUBSCRIBE,topic])
+        self._publish(DALOG_COMMAND,[DALOG_CMD_UNSUBSCRIBE,topic])
         
     def tellIgnore(self,key):
         '''
         tell datalog server to ignore the following key
         :param key:(str) name of keyword to be ignored
         '''
-        self.mbus.publishEvent(DALOG_COMMAND,[DALOG_CMD_IGNORE,key])
+        self._publish(DALOG_COMMAND,[DALOG_CMD_IGNORE,key])
         
     def tellUnignore(self,key):
         '''
@@ -266,7 +321,7 @@ class DataLogClient(QtCore.QObject):
         
         :param key:(str) name of keyword to be removed from ignore list
         '''
-        self.mbus.publishEvent(DALOG_COMMAND,[DALOG_CMD_UNIGNORE,key])
+        self._publish(DALOG_COMMAND,[DALOG_CMD_UNIGNORE,key])
         
     def tellRemove(self,key):
         '''
@@ -274,7 +329,7 @@ class DataLogClient(QtCore.QObject):
         
         :param key:(str)
         '''
-        self.mbus.publishEvent(DALOG_COMMAND,[DALOG_CMD_REMOVE,key])
+        self._publish(DALOG_COMMAND,[DALOG_CMD_REMOVE,key])
         
     def getLastData(self,callback):
         '''
@@ -283,17 +338,17 @@ class DataLogClient(QtCore.QObject):
         '''
         if(self.callback == None):
             self.callback = callback
-        elif(type(self.callback) is list):
+        elif(isinstance(self.callback,list)):
             self.callback.append(callback)
         else:
-            temp = self.callback
-            self.callback = [temp,callback]
+            self.callback = [self.callback,callback]
         self.mbus.subscribe(DALOG_PUBLISH, self.__handleLastLoggedData)
-        self.mbus.publishEvent(DALOG_COMMAND,[DALOG_CMD_PUBLISH])
+        self.mbus.waitForEventPublished()
+        self._publish(DALOG_COMMAND,[DALOG_CMD_PUBLISH])
     
     def _publish(self,cmd,data):
-        
         self.mbus.publishEvent(cmd,data)
+        self.mbus.waitForEventPublished()
         
     def __handleLastLoggedData(self,data):
         '''
@@ -302,7 +357,7 @@ class DataLogClient(QtCore.QObject):
         '''
         if(self.callback != None):
             self.mbus.unsubscribe(DALOG_PUBLISH)
-            if(type(self.callback) is list):
+            if(isinstance(self.callback,list)):
                 for func in self.callback:
                     func(data)
             else:
@@ -315,7 +370,7 @@ class DataLogClient(QtCore.QObject):
         send the value to the datalog server. it will be stored under self.key
         :param value: (object) value to be send to datalog server 
         '''
-        self.mbus.publishEvent(DALOG_TOPIC, {self.key:value})
+        self._publish(DALOG_TOPIC, {self.key:value})
     
     @QtCore.pyqtSlot(object)
     def logDict(self,dict):
@@ -323,7 +378,7 @@ class DataLogClient(QtCore.QObject):
         send the dict to the datalog server. it will be stored under self.key
         :param dict: (dict) dictionary to be stored in database 
         '''
-        self.mbus.publishEvent(DALOG_TOPIC,dict)
+        self._publish(DALOG_TOPIC,dict)
 
 if __name__ == "__main__":
     # enable CTRL+C break
@@ -335,12 +390,18 @@ if __name__ == "__main__":
         def __init__(self):
             DataLogServer.__init__(self)
             self.logged.connect(self.printEventLogged)
+            self.time = 0
             
         def printEventLogged(self, data):
-            print "new event: %s" % str(data)
+            print "new event: %s took %s" % (str(data),time.time()-self.time)
     
     print "Starting Datalogger"
     app = QtCore.QCoreApplication([])
     serv = ConsoleServer()
     
-    app.exec_()
+    serv.connectToMessageBus('localhost')
+    print 'connected: ',serv.isConnected()
+    if(serv.isConnected()):
+        serv.start()
+        
+    sys.exit(app.exec_())
