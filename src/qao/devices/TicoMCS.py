@@ -84,7 +84,7 @@ class TicoMCS(threading.Thread):
 						data = self.adev.GetData_Long(num_storageBuffer, (i-1)*buffersize+1, bufferLen[0])
 					else:
 						data = []
-					self.currentSequence.add(IonSignal(acqTimestamp,i,np.array(data)))
+					self.currentSequence.add(IonSignal(acqTimestamp,i,np.array(data,dtype="int32")))
 			
 			#when a new sequence started, the old one is over so the data can be emitted
 			if seqTimestamp > acqTimestamp and not self.dataPublished:
