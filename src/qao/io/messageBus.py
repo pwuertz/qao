@@ -45,7 +45,6 @@ if __name__ == "__main__":
         pass
 
 import sys
-import cPickle
 import json
 import websocket
 import os
@@ -76,7 +75,7 @@ def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
     is useful for small scripts exporting data.
     
     :param topic: (str) The topic for the messageBus event.
-    :param data: (object) Any python object that can be serialized via cPickle.
+    :param data: (object) Any python object that can be serialized via json.
     :param hostname: (str) The hostname of the messageBus server.
     :param port: (int) TCP port to connect to.
     """
@@ -261,10 +260,10 @@ class MessageBusClient(MessageBusCommunicator):
         
         This methods sends new data to the messageBus, making it available
         for anyone who subscribed to the given topic. Any data will be
-        automatically serialized by cPickle and sent to the subscribers.
+        automatically serialized by JSON and sent to the subscribers.
         
         :param topic: (str) Topic for the published data.
-        :param data: (object) Any python object that can be serialized via cPickle.
+        :param data: (object) Any python object that can be serialized via JSON.
         """
         topic = str(topic)
         self._sendPacket([TYPE_PUBLISH, topic, data])
