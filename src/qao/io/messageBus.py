@@ -287,7 +287,7 @@ class MessageBusClient(MessageBusCommunicator):
         while self.connection.bytesToWrite() > 0:
             self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
 
-    def rpcRegister(self, funcName, argCount, retCount, callback):
+    def rpcRegister(self, funcName, argList, retCount, callback):
         """
         Register RPC call that should be made available.
 
@@ -295,12 +295,12 @@ class MessageBusClient(MessageBusCommunicator):
         these functions at the server before they can be called by other programs. This is done using this function
 
         :param funcName: (str) name under which the function can be called by the remote end. Preferably use the <program name>.<function name> scheme
-        :param argCount: (int) number of arguments the function takes.
+        :param argList:  (list) list of argument names. Those names are used as keys in the 'args' dict when a rpcCall is made.
         :param retCount: (int) number of return values the function gives.
         :param callback: (function) a reference to the function that should be called if a remote client requests it.
         """
         self.rpcCallbacks.update({funcName:callback})
-        self._sendPacket([TYPE_RPC_REGISTER, funcName, {'argCount':argCount, 'retCount':retCount}])
+        self._sendPacket([TYPE_RPC_REGISTER, funcName, {'argList':argList, 'retCount':retCount}])
 
     def rpcUnregister(self, funcName):
         """
@@ -317,9 +317,9 @@ class MessageBusClient(MessageBusCommunicator):
         Call a remote function via RPC.
 
         :param funcName: (str) name of the remote function that should be called.
-        :param funcName: (list) list of arguments passed to the remote function.
+        :param funcName: (dict) dictionary of named arguments passed to the remote function. The key names have to match the parameter names registered by the remote program.
         :param answerCallback: (function) function to be called when the answer is received.
-                                          Two parameters will be given to the function: 1. the funcName, 2. a dictionary containing the result of the function call in the key 'ret'
+                                          Two parameters will be given to the function: 1. the funcName, 2. a dictionary containing the result of the function call in the key 'ret' as well as the success status of the function call in the key 'succes' (bool).
         """
         identifier = str(int(time.time()*1000))
         self._sendPacket([TYPE_RPC_REQUEST, funcName, {'args':args, 'id':identifier}])
@@ -337,11 +337,13 @@ class MessageBusClient(MessageBusCommunicator):
     def _handleRPCRequest(self, funcName, data):
         if funcName in self.rpcCallbacks:
             try:
-                ret = self.rpcCallbacks[funcName](*data['args'])
+                ret = self.rpcCallbacks[funcName](data['args'])
                 data.update({'ret':ret})
-                self._sendPacket([TYPE_RPC_REPLY,funcName,data])
+                data.update({'success':True})
             except Exception, e:
-                print e
+                data.update({'success':False})
+                data.update({'error':str(e)})
+            self._sendPacket([TYPE_RPC_REPLY,funcName,data])
 
 
     def _handleHeaderReceived(self,httpHeader):
@@ -428,8 +430,8 @@ class ServerClientConnection(MessageBusCommunicator):
             if data[0] == TYPE_RPC_REGISTER:
                 if len(data) < 3:
                     raise Exception("packet with insufficient number of args")
-                if not 'argCount' in data[2]:
-                    print "Could not register RPC call %s since argCount was missing in registration packet"%(data[1])
+                if not 'argList' in data[2]:
+                    print "Could not register RPC call %s since argList was missing in registration packet"%(data[1])
                     return
                 if not 'retCount' in data[2]:
                     print "Could not register RPC call %s since retCount was missing in registration packet"%(data[1])
@@ -526,7 +528,7 @@ class MessageBusServer(QtCore.QObject):
         func = unicode(func)
         for client in self.clients:
             if func in client.rpcFunctions:
-                if 'args' in data and len(data['args']) == client.rpcFunctions[func]['argCount']:
+                if 'args' in data and len(data['args']) == len(client.rpcFunctions[func]['argList']):
                     client.sendRPCRequest(func,data,issuer)
                 else:
                     print "Arguments messed up for requested function %s"%(func)
