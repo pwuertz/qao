@@ -67,8 +67,11 @@ TYPE_SUBSCRIBE      = "subscribe"
 TYPE_UNSUBSCRIBE    = "unsubscribe"
 TYPE_PUBLISH        = "publish"
 TYPE_SET            = "set"
+TYPE_INFO           = "info"
 TYPE_ACK            = "ack"
 TYPE_NAK            = "nak"
+
+INFO_RPC_LIST       = "RPClist"
 
 def simplePublish(topic, data, hostname, port = DEFAULT_PORT):
     """
@@ -190,6 +193,7 @@ class MessageBusClient(MessageBusCommunicator):
     """
 
     receivedEvent = qtSignal(str, object)
+    receivedInfo  = qtSignal(str, object)
     connected = qtSignal()
     disconnected = qtSignal()
 
@@ -325,6 +329,9 @@ class MessageBusClient(MessageBusCommunicator):
         self._sendPacket([TYPE_RPC_REQUEST, funcName, {'args':args, 'id':identifier}])
         self.rpcPendingRequests.update({identifier:answerCallback})
 
+    def rpcInfoRequest(self):
+        self._sendPacket([TYPE_INFO, INFO_RPC_LIST])
+
     def _sendHeader(self):
         hdr = websocket.DefaultHTTPClientHeader()
         nWritten = self._send(hdr.createHeader(),blocking=True)
@@ -370,6 +377,10 @@ class MessageBusClient(MessageBusCommunicator):
                 self.handleEvent(data[1], data[2])
                 return
 
+            if data[0] == TYPE_INFO:
+                self.receivedInfo.emit(data[1], data[2])
+                return
+
             if data[0] == TYPE_RPC_REQUEST:
                 self._handleRPCRequest(data[1], data[2])
                 return
@@ -388,6 +399,7 @@ class MessageBusClient(MessageBusCommunicator):
 class ServerClientConnection(MessageBusCommunicator):
 
     eventPublished  = qtSignal(str, object)
+    infoRequested   = qtSignal(str, object)
     rpcRequested    = qtSignal(str, object, object)
     rpcReplied      = qtSignal(str, object)
     disconnected    = qtSignal()
@@ -443,6 +455,14 @@ class ServerClientConnection(MessageBusCommunicator):
             if data[0] == TYPE_RPC_UNREGISTER:
                 if data[1] in self.rpcFunctions:
                     del(self.rpcFunctions[data[1]])
+                return
+
+            # handle info
+            if data[0] == TYPE_INFO:
+                if len(data) < 2:
+                    raise Exception("packet with insufficient number of args")
+                if data[1] == INFO_RPC_LIST:
+                    self.infoRequested.emit(data[1],self)
                 return
 
             # handle RPC request
@@ -511,6 +531,7 @@ class MessageBusServer(QtCore.QObject):
         client.eventPublished.connect(self._handlePublish)
         client.disconnected.connect(self._handleDisconnect)
         client.rpcRequested.connect(self._handleRPCRequest)
+        client.infoRequested.connect(self._handleInfoRequest)
         self.clients.append(client)
         self.clientConnected.emit(client)
         print "new client connected (active connections: %d)" % len(self.clients)
@@ -532,6 +553,12 @@ class MessageBusServer(QtCore.QObject):
                     client.sendRPCRequest(func,data,issuer)
                 else:
                     print "Arguments messed up for requested function %s"%(func)
+
+    def _handleInfoRequest(self,typ, issuer):
+        rpcFunctions = {}
+        for client in self.clients:
+            rpcFunctions.update(client.rpcFunctions)
+        issuer.forwardEvent(str(typ), rpcFunctions, pkgType=TYPE_INFO)
 
     def _handleDisconnect(self):
         client = self.sender()
