@@ -113,7 +113,7 @@ class MessageBusCommunicator(QtCore.QObject):
 
     def _sendFrame_(self,data, opCode):
         mask = os.urandom(4) if self.masking else None
-        frm = websocket.Frame(opCode,data,mask=os.urandom(4),fin=1)
+        frm = websocket.Frame(opCode,data,mask=mask,fin=1)
         nWritten = self._send(frm.build())
 
     def _sendPacket(self, data, binary = False):
