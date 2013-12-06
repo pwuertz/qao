@@ -239,6 +239,14 @@ class Agilent33220:
         self.send("func:user " + name)
         self.send("func:shape user")
 
+    def selectArb(self, name, samplerate, amplitude, offset, channel=1):
+    	# contrarily to applyArb, this does activate the channel and does not set the trigger to IMMEDIATELY
+		self.send("sour%d:func ARB" % channel)
+		self.send("sour%d:func:arb %s" % (channel, name))
+		self.send("sour%d:func:arb:srat %.0f" % (channel, samplerate))        
+		self.voltAmplitude(amplitude, "V", channel)
+		self.voltOffset(offset, "V", channel)
+
 AgilentFuncGen = Agilent33220
 
 class Agilent33500:
