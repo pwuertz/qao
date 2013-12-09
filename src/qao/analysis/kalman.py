@@ -162,7 +162,7 @@ class KalmanFilterBase:
             x_given_kmax_[k] = x_k_given_[k] + np.dot(C, xdiff)
             P_given_kmax_[k] = P_k_given_[k] + np.dot(np.dot(C, Pdiff), C.T)
         
-        return x_given_kmax_
+        return x_given_kmax_, P_given_kmax_
 
 
 class LinearSystem(KalmanFilterBase):
