@@ -67,19 +67,19 @@ DALOG_COUCH_BASE_URI = "http://%s:%i/%s"%(DALOG_COUCH_HOST,DALOG_COUCH_PORT,DALO
 def simpleLogValue(key,value,messageBus,messageBusPort=DEFAULT_PORT):
     '''
     Tell DataLogger to add the value with keyword key to it's internal storage in order to store it to the database
-    :param key: keyword for storage in database
-    :param value: value to be stored in database
-    :param messageBus: hostname of the messagebus
-    :param messageBusPort: port for the messagebus
+    :param key: (str) keyword for storage in database
+    :param value: (str) value to be stored in database
+    :param messageBus: (str) hostname of the messagebus
+    :param messageBusPort: (int) port for the messagebus
     '''
     simplePublish(DALOG_TOPIC, {key:value},messageBus,messageBusPort)
     
 def simpleLogData(data,messageBus,messageBusPort=DEFAULT_PORT):
     '''
     Tell DataLogger to add the data dictionary to it's internal storage in order to store it to the database
-    :param data: dictionary containing keys and values which should be stored into the database
-    :param messageBus: hostname of the messagebus
-    :param messageBusPort: port for the messagebus
+    :param data: (dict) dictionary containing keys and values which should be stored into the database
+    :param messageBus: (str) hostname of the messagebus
+    :param messageBusPort: (int) port for the messagebus
     '''
     simplePublish(DALOG_TOPIC, data, messageBus,messageBusPort)
 
@@ -130,10 +130,10 @@ class DataLogServer(QtCore.QObject):
     @staticmethod
     def setup(couchHost=DALOG_COUCH_HOST,couchPort=DALOG_COUCH_PORT,database=DALOG_COUCH_BASE):
         '''
-        this method create a database for logging
-        :param couchHost:
-        :param couchPort:
-        :param database:
+        this method creats a database for logging if not existent
+        :param couchHost: (str) hostname for database
+        :param couchPort: (int) port for database
+        :param database: (str) selected database
         '''
         couch = couchdb.client.Server("http://%s:%i"%(couchHost,couchPort))
         db = None
@@ -187,6 +187,10 @@ class DataLogServer(QtCore.QObject):
     logged = QtCore.pyqtSignal(object)
     
     def commandHandler(self,data):
+        '''
+        handles all command datalog receives over DALOG_CMD topic on mbus
+        :param data: [command, *data]
+        '''
         cmd = data[0]
         print "%s: %s"%(cmd,str(data))
         if cmd == DALOG_CMD_SUBSCRIBE:
@@ -224,7 +228,7 @@ class DataLogServer(QtCore.QObject):
                        
     def publish(self):
         '''
-        Will publish current available data
+        Publishs current available data
         '''
         self.lastStoredData.update(self.data)
         self.mbus.publishEvent(DALOG_PUBLISH, self.lastStoredData)
