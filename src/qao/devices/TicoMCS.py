@@ -66,10 +66,10 @@ class TicoMCS(threading.Thread):
 
     def run(self):
         while self.keepRunning:
-            currentSlot = numpy.frombuffer(self.adev.Get_Par(num_currentSlot), dtype=numpy.int32).copy()
-            acqTimestamp = numpy.frombuffer(self.adev.Get_Par(num_acqTimestamp), dtype=numpy.int32).copy()
-            seqTimestamp = numpy.frombuffer(self.adev.Get_Par(num_seqTimestamp), dtype=numpy.int32).copy()
-            status = numpy.frombuffer(self.adev.Get_Par(num_status), dtype=numpy.int32).copy()
+            currentSlot = self.adev.Get_Par(num_currentSlot)
+            acqTimestamp = self.adev.Get_Par(num_acqTimestamp)
+            seqTimestamp = self.adev.Get_Par(num_seqTimestamp)
+            status = self.adev.Get_Par(num_status)
             
             if not self.currentSequence or acqTimestamp != self.currentSequence.seqTimestamp:
                 self.currentSequence = IonScanSequence(acqTimestamp)
@@ -81,7 +81,7 @@ class TicoMCS(threading.Thread):
                 for i in range(self.currentSequence.scanCount(),currentSlot):
                     bufferLen = self.adev.GetData_Long(num_bufferLen,i+1,1)
                     if bufferLen[0] > 0:
-                        data = numpy.frombuffer(self.adev.GetData_Long(num_storageBuffer, (i-1)*buffersize+1, bufferLen[0]), dtype=numpy.int32).copy()
+                        data = np.frombuffer(self.adev.GetData_Long(num_storageBuffer, (i-1)*buffersize+1, bufferLen[0]), dtype=np.int32).copy()
                     else:
                         data = np.empty((0),dtype='int32')
                     self.currentSequence.add(IonSignal(acqTimestamp,i,data))
