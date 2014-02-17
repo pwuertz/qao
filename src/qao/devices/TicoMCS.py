@@ -81,10 +81,10 @@ class TicoMCS(threading.Thread):
 				for i in range(self.currentSequence.scanCount(),currentSlot):
 					bufferLen = self.adev.GetData_Long(num_bufferLen,i+1,1)
 					if bufferLen[0] > 0:
-						data = self.adev.GetData_Long(num_storageBuffer, (i-1)*buffersize+1, bufferLen[0])
+						data = numpy.frombuffer(self.adev.GetData_Long(num_storageBuffer, (i-1)*buffersize+1, bufferLen[0]), dtype=numpy.int32).copy()
 					else:
-						data = []
-					self.currentSequence.add(IonSignal(acqTimestamp,i,np.array(data,dtype="int32")))
+						data = np.empty((0),dtype='int32')
+					self.currentSequence.add(IonSignal(acqTimestamp,i,data))
 			
 			#when a new sequence started, the old one is over so the data can be emitted
 			if seqTimestamp > acqTimestamp and not self.dataPublished:
