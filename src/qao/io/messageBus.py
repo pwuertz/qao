@@ -262,7 +262,8 @@ class MessageBusClient(MessageBusCommunicator):
         """
         topic = str(topic)
         self._sendPacket([TYPE_UNSUBSCRIBE, topic])
-        if topic in self.subscriptionCallbacks: self.subscriptionCallbacks.remove(topic)
+        if topic in self.subscriptionCallbacks:
+            self.subscriptionCallbacks.pop(topic)
 
     def publishEvent(self, topic, data):
         """
