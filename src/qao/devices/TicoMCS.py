@@ -81,15 +81,15 @@ class TicoMCS(threading.Thread):
                 self.currentSequence = IonScanSequence(acqTimestamp)
                 self.dataPublished = False
                 
-                j = 0
+                blocks = []
                 i = n - 1
                 while i >= 0:
                     block_len = data[i]
-                    block = data[i-block_len:i]
+                    blocks.append(data[i-block_len:i])
                     i -= block_len + 1
-                    self.currentSequence.add(IonSignal(acqTimestamp, j, block))
-                    j += 1
                 assert i == -1, 'Bad data format'
+                for i,block in enumerate(blocks[::-1]):
+                    self.currentSequence.add(IonSignal(acqTimestamp, i, block))
                 self.callback(self.currentSequence)
                 self.dataPublished = True
             
@@ -138,7 +138,7 @@ if __name__ == "__main__":
             
             
     
-    tmcs = TicoMCS(showSequence)
+    tmcs = TicoMCS(showSequence,adwinDeviceNo=0x001)
     tmcs.start()
     print "Threading"
     time.sleep(200)
