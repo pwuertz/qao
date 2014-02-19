@@ -76,6 +76,7 @@ class TicoMCS(threading.Thread):
                 # acknowledge retrieval of data
                 self.adev.Set_Par(num_mcb_readout_status, MCB_READ_STATUS_IDLE)
                 
+
                 self.currentSequence = IonScanSequence(acqTimestamp)
                 
                 blocks = []
@@ -87,6 +88,7 @@ class TicoMCS(threading.Thread):
                 assert i == -1, 'Bad data format'
                 for i,block in enumerate(blocks[::-1]):
                     self.currentSequence.add(IonSignal(acqTimestamp, i, block))
+
                 self.callback(self.currentSequence)
             
             if mcb_status != self.mcb_status and self.statusCallback:
