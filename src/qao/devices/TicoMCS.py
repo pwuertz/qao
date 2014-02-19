@@ -89,6 +89,7 @@ class TicoMCS(threading.Thread):
                 for i,block in enumerate(blocks[::-1]):
                     self.currentSequence.add(IonSignal(acqTimestamp, i, block))
 
+
                 self.callback(self.currentSequence)
             
             if mcb_status != self.mcb_status and self.statusCallback:
@@ -136,6 +137,7 @@ if __name__ == "__main__":
             
             
     
+
     tmcs = TicoMCS(showSequence,adwinDeviceNo=0x150)
     tmcs.start()
     print "Threading"
