@@ -76,7 +76,10 @@ class TicoMCS(threading.Thread):
                 # acknowledge retrieval of data
                 self.adev.Set_Par(num_mcb_readout_status, MCB_READ_STATUS_IDLE)
                 
+<<<<<<< HEAD
 
+=======
+>>>>>>> TicoMCS: remove unneeded variable
                 self.currentSequence = IonScanSequence(acqTimestamp)
                 
                 blocks = []
@@ -135,9 +138,6 @@ if __name__ == "__main__":
         for iSig in ionSignalSequence:
             print "%i:  %i events"%(iSig.Num,len(iSig.rawData))
             
-            
-    
-
     tmcs = TicoMCS(showSequence,adwinDeviceNo=0x150)
     tmcs.start()
     print "Threading"
