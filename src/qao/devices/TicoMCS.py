@@ -52,7 +52,6 @@ class TicoMCS(threading.Thread):
         threading.Thread.__init__(self)
         self.adev = ADwin.ADwin(adwinDeviceNo)
         self.currentSequence = None
-        self.dataPublished = False
         self.callback = callback
         self.statusCallback = statusCallback
         self.keepRunning = True
@@ -77,9 +76,7 @@ class TicoMCS(threading.Thread):
                 # acknowledge retrieval of data
                 self.adev.Set_Par(num_mcb_readout_status, MCB_READ_STATUS_IDLE)
                 
-                
                 self.currentSequence = IonScanSequence(acqTimestamp)
-                self.dataPublished = False
                 
                 blocks = []
                 i = n - 1
@@ -91,7 +88,6 @@ class TicoMCS(threading.Thread):
                 for i,block in enumerate(blocks[::-1]):
                     self.currentSequence.add(IonSignal(acqTimestamp, i, block))
                 self.callback(self.currentSequence)
-                self.dataPublished = True
             
             if mcb_status != self.mcb_status and self.statusCallback:
                 self.statusCallback(mcb_status)
@@ -138,7 +134,7 @@ if __name__ == "__main__":
             
             
     
-    tmcs = TicoMCS(showSequence,adwinDeviceNo=0x001)
+    tmcs = TicoMCS(showSequence,adwinDeviceNo=0x150)
     tmcs.start()
     print "Threading"
     time.sleep(200)
