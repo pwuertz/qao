@@ -15,12 +15,54 @@ import h5py
 
 img_names = ["absImage", "signalImage", "flatImage", "darkImage"]
 
-def saveAbsorptionImage(filename, absImage, signalImage = None, flatImage = None, darkImage = None,
-                        metadata = {}, dtype = None):
+
+def saveImageSeries(filename, image, metadata={}, dtype=None):
+    """Use this function to save camera images taken by CCD cameras. The data is saved in a HDF5
+    file. It is encouraged to provide a dictionary of metadata, stored as attributes in HDF5.
+
+    :param filename: (str) The filename to use for saving the data.
+    :param image: (ndarray) image data, preferably a 2d numpy array.
+    :param metadata: (dict) Information to be stored as image attributes.
+    :param dtype: (numpy.dtype) Convert data to different type when saving the data.
+
+    .. seealso:: :func:`loadAbsorptionImage`
+
+    Example::
+
+        data = numpy.random.rand(512, 512)
+        info = {"dwell_ms": 2.0}
+        saveAbsorptionImage("random.hdf5", image=data, metadata=info)
+
+    """
+    # check/append file extension
+    basename, ext = os.path.splitext(filename)
+    if ext.lower() not in [".h5", ".hdf", ".hdf5"]:
+        ext += ".h5"
+
+    files, unused, unused = image.shape
+
+    # create new h5 file and save data
+    fh = h5py.File(basename + ext, "w")
+    for i in range(files):
+        data = image[i, :, :]
+        if data is None:
+            continue
+        name = 'image_%s' % str(i)
+        ds = fh.create_dataset(name, data=data, dtype=dtype, compression="gzip")
+        ds.attrs["CLASS"] = "IMAGE"
+        ds.attrs["IMAGE_VERSION"] = "1.3"
+
+    for key, val in metadata.items():
+        fh.attrs[key] = val
+    fh.close()
+
+
+def saveAbsorptionImage(filename, absImage, signalImage=None, flatImage=None,
+                        darkImage=None, metadata={}, dtype=None):
     """Use this function to save absorption images taken by CCD cameras. The data is saved in a HDF5
     file. You may optionally provide the signal-, flat- and dark-image to be saved within the same file
     as well. It is encouraged to provide a dictionary of metadata, stored as attributes in HDF5.
-    
+
     :param filename: (str) The filename to use for saving the data.
     :param absImage: (ndarray) Absorption image data, preferably a 2d numpy array.
     :param signalImage: (ndarray) Optional signal image data.
@@ -30,28 +72,32 @@ def saveAbsorptionImage(filename, absImage, signalImage = None, flatImage = None
     :param dtype: (numpy.dtype) Convert data to different type when saving the data.
 
     .. seealso:: :func:`loadAbsorptionImage`
-    
+
     Example::
-    
+
         data = numpy.random.rand(512, 512)
         info = {"dwell_ms": 2.0}
         saveAbsorptionImage("random.hdf5", absImage=data, signalImage=data, metadata=info)
-    
+
     """
     # check/append file extension
     basename, ext = os.path.splitext(filename)
-    if ext.lower() not in [".h5", ".hdf", ".hdf5"]: ext += ".h5"
+    if ext.lower() not in [".h5", ".hdf", ".hdf5"]:
+        ext += ".h5"
 
     # create new h5 file and save data
-    fh = h5py.File(basename+ext, "w")
+    fh = h5py.File(basename + ext, "w")
     for name, data in zip(img_names, [absImage, signalImage, flatImage, darkImage]):
-        if data is None: continue
+        if data is None:
+            continue
         ds = fh.create_dataset(name, data=data, dtype=dtype, compression="gzip")
         ds.attrs["CLASS"] = "IMAGE"
         ds.attrs["IMAGE_VERSION"] = "1.3"
         if name == "absImage":
-            for key, val in metadata.items(): ds.attrs[key] = val
+            for key, val in metadata.items():
+                ds.attrs[key] = val
     fh.close()
+
 
 def loadAbsorptionImage(filename):
     """Use this function to save absorption images taken by CCD cameras. The data is saved in a HDF5
@@ -61,22 +107,23 @@ def loadAbsorptionImage(filename):
     :param filename: (str) The filename to use for loading the data.
     :returns:
         (abs_image, images, metadata)
-    
+
         `abs_image` contains the absorption image, `images` is a dict with optional images
         and `metadata` contains the attributes found in the data file.
-    
+
     .. seealso:: :func:`saveAbsorptionImage`
-    
+
     Example::
-    
+
         abs_image, other_images, metadata = loadAbsorptionImage("random.hdf5")
-        
+
     """
-    
+
     # open absorption image
     fh = h5py.File(filename, "r")
-    if "absImage" not in fh: raise Exception("not an absorption image")
-    
+    if "absImage" not in fh:
+        raise Exception("not an absorption image")
+
     # get metadata
     metadata = dict(fh["absImage"].attrs)
     try:
@@ -84,13 +131,14 @@ def loadAbsorptionImage(filename):
         del metadata["CLASS"]
     except:
         pass
-    
+
     # get images
     images = {}
     for name in img_names:
-        if name not in fh: continue
+        if name not in fh:
+            continue
         images[name] = numpy.asarray(fh[name])
-    
+
     fh.close()
     return images.pop("absImage"), images, metadata
 
@@ -102,33 +150,34 @@ def ndarrayBase64Encode(ndarray):
     :param ndarray: numpy.ndarray
     '''
     import base64
-    return [str(ndarray.dtype),base64.b64encode(ndarray),ndarray.shape]
-            
+    return [str(ndarray.dtype), base64.b64encode(ndarray),  ndarray.shape]
+
+
 def ndarrayBase64Decode(encodedData):
     '''
     creates numpy.ndarray from list[dtype,base64encoded ndarray, [shape]] 
     :param encodedData:list[dtype,base64encoded ndarray, [shape]] shape is optional
     '''
-    import base64,numpy
+    import base64
     dtype = numpy.dtype(encodedData[0])
-    arr = numpy.frombuffer(base64.decodestring(encodedData[1]),dtype)
+    arr = numpy.frombuffer(base64.decodestring(encodedData[1]), dtype)
     if len(encodedData) > 2:
         return arr.reshape(encodedData[2])
     return arr
-        
+
 if __name__ == '__main__':
     import tempfile
-    fname = os.path.join(tempfile.gettempdir(), "test.h5") 
-    
+    fname = os.path.join(tempfile.gettempdir(), "test.h5")
+
     info = {"dwell": 3.0}
     data = numpy.random.rand(512, 512)
     saveAbsorptionImage(fname, absImage=data, signalImage=data, metadata=info)
     print "saved", os.stat(fname).st_size, "bytes"
-    print "-"*30
+    print "-" * 30
     absImage, otherImages, meta = loadAbsorptionImage(fname)
     print "loaded from file"
     print "absImage:   ", absImage.shape, absImage.dtype
     print "otherImages:", otherImages.keys()
     print "metadata:   ", meta
-    
+
     os.remove(fname)
