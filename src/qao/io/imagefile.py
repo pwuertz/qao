@@ -66,7 +66,7 @@ def saveAbsorptionImage(filename, absImage,
     """Use this function to save absorption images taken by CCD cameras. The data is saved in a HDF5
     file. You may optionally provide the signal-, flat- and dark-image to be saved within the same file
     as well. It is encouraged to provide a dictionary of metadata, stored as attributes in HDF5.
-
+    
     :param filename: (str) The filename to use for saving the data.
     :param absImage: (ndarray) Absorption image data, preferably a 2d numpy array.
     :param signalImage: (ndarray) Optional signal image data.
@@ -178,6 +178,3 @@ if __name__ == '__main__':
     print "metadata:   ", meta
     
     os.remove(fname)
-
-
-
