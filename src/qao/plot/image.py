@@ -110,12 +110,44 @@ def cmapping_cobject_inline(data, rgbdata_cobject, vmin, vmax, r_map, g_map, b_m
 
 def createRGB(data, vmin = None, vmax = None, cmap = cmap_wjet):
     """
-    Create RGB values from data using a color-map.
+    Create image from data using a color-map.
 
     The minimum and maximum value for scaling the colormap is
     determined from `data` unless specified by `vmin` and `vmax`.
     The output array's shape will be (height, width, 4),
-    containing the rgb values for each pixel. 
+    containing the color values for each pixel. The color order
+    is RGBA.
+    
+    :param data: (ndarray) Array containing the data values.
+    :param vmin: (float) Minimum data value or None.
+    :param vmax: (float) Maximum data value or None.
+    :param cmap: (dict) Colormap for converting the data.
+    :returns: (ndarray) Array containing RGB data.
+    
+    Example::
+        
+        import numpy as np
+        import pylab as p
+        from qao.plot.image import createRGB, cmap_hot
+        
+        data = np.random.rand(200, 200)
+        data_rgb = createRGB(data, cmap = cmap_hot)
+    """
+    data, vmin, vmax = __checkTypes(data, vmin, vmax)
+    # create rgb values from data
+    rgbdata = np.empty([data.shape[0], data.shape[1], 4], dtype=np.uint8)
+    cmapping_ndarray_inline(data, rgbdata, vmin, vmax, cmap["b_map"], cmap["g_map"], cmap["r_map"])
+    return rgbdata
+
+def createBGR(data, vmin = None, vmax = None, cmap = cmap_wjet):
+    """
+    Create image from data using a color-map.
+
+    The minimum and maximum value for scaling the colormap is
+    determined from `data` unless specified by `vmin` and `vmax`.
+    The output array's shape will be (height, width, 4),
+    containing the color values for each pixel. The color order
+    is BGRA.
     
     :param data: (ndarray) Array containing the data values.
     :param vmin: (float) Minimum data value or None.
