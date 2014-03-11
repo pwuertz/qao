@@ -16,13 +16,13 @@ import h5py
 img_names = ["absImage", "signalImage", "flatImage", "darkImage"]
 
 
-def saveImageSeries(filename, image, metadata={}, dtype=None):
+def saveImageSeries(filename, images, metadata={}, dtype=None):
     """Use this function to save camera images taken by CCD cameras
     The data is saved in a HDF5 file. It is encouraged to provide a dictionary of metadata,
     stored as attributes in HDF5.
 
     :param filename: (str) The filename to use for saving the data.
-    :param image: (ndarray) image data, preferably a 2d numpy array.
+    :param imagse: (ndarray) image data, preferably a 3d numpy array -  with first index as for image
     :param metadata: (dict) Information to be stored as image attributes.
     :param dtype: (numpy.dtype) Convert data to different type when saving the data.
 
@@ -30,9 +30,9 @@ def saveImageSeries(filename, image, metadata={}, dtype=None):
 
     Example::
 
-    data = numpy.random.rand(512, 512)
+    data = numpy.random.rand(3, 512, 512)
     info = {"dwell_ms": 2.0}
-    saveImageSeries("random.hdf5", image=data, metadata=info)
+    saveImageSeries("random.hdf5", images=data, metadata=info)
 
     """
     # check/append file extension
@@ -40,21 +40,26 @@ def saveImageSeries(filename, image, metadata={}, dtype=None):
     if ext.lower() not in [".h5", ".hdf", ".hdf5"]:
         ext += ".h5"
 
-    files, unused, unused = image.shape
-
     # create new h5 file and save data
     fh = h5py.File(basename + ext, "w")
-    for i in range(files):
-        data = image[i, :, :]
-        if data is None:
-            continue
-    name = 'image_%s' % str(i)
-    ds = fh.create_dataset(name, data=data, dtype=dtype, compression="gzip")
-    ds.attrs["CLASS"] = "IMAGE"
-    ds.attrs["IMAGE_VERSION"] = "1.3"
 
-    for key, val in metadata.items():
-        fh.attrs[key] = val
+    def storeImage(image, index=0, fh=fh):
+        if image == None:
+            print "Warning: None Type Image won't be stored"
+        name = 'image_%s' % str(index)
+        ds = fh.create_dataset(name, data=image, dtype=dtype, compression="gzip")
+        ds.attrs["CLASS"] = "IMAGE"
+        ds.attrs["IMAGE_VERSION"] = "1.4"
+
+    if len(images.shape) == 3:
+        (files, unused, unused) = images.shape
+        for index in range(files):
+            storeImage(images[index, :, :], index)
+    else:
+        storeImage(images)
+
+    for key in metadata:
+        fh.attrs[key] = metadata[key]
     fh.close()
 
 
