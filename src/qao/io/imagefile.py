@@ -15,12 +15,58 @@ import h5py
 
 img_names = ["absImage", "signalImage", "flatImage", "darkImage"]
 
-def saveAbsorptionImage(filename, absImage, signalImage = None, flatImage = None, darkImage = None,
-                        metadata = {}, dtype = None):
+
+def saveImageSeries(filename, image, metadata={}, dtype=None):
+    """Use this function to save camera images taken by CCD cameras
+    The data is saved in a HDF5 file. It is encouraged to provide a dictionary of metadata,
+    stored as attributes in HDF5.
+
+    :param filename: (str) The filename to use for saving the data.
+    :param image: (ndarray) image data, preferably a 2d numpy array.
+    :param metadata: (dict) Information to be stored as image attributes.
+    :param dtype: (numpy.dtype) Convert data to different type when saving the data.
+
+    .. seealso:: :func:`loadAbsorptionImage`
+
+    Example::
+
+    data = numpy.random.rand(512, 512)
+    info = {"dwell_ms": 2.0}
+    saveImageSeries("random.hdf5", image=data, metadata=info)
+
+    """
+    # check/append file extension
+    basename, ext = os.path.splitext(filename)
+    if ext.lower() not in [".h5", ".hdf", ".hdf5"]:
+        ext += ".h5"
+
+    files, unused, unused = image.shape
+
+    # create new h5 file and save data
+    fh = h5py.File(basename + ext, "w")
+    for i in range(files):
+        data = image[i, :, :]
+        if data is None:
+            continue
+    name = 'image_%s' % str(i)
+    ds = fh.create_dataset(name, data=data, dtype=dtype, compression="gzip")
+    ds.attrs["CLASS"] = "IMAGE"
+    ds.attrs["IMAGE_VERSION"] = "1.3"
+
+    for key, val in metadata.items():
+        fh.attrs[key] = val
+    fh.close()
+
+
+def saveAbsorptionImage(filename, absImage,
+                        signalImage=None,
+                        flatImage=None,
+                        darkImage=None,
+                        metadata={}, dtype=None):
     """Use this function to save absorption images taken by CCD cameras. The data is saved in a HDF5
     file. You may optionally provide the signal-, flat- and dark-image to be saved within the same file
     as well. It is encouraged to provide a dictionary of metadata, stored as attributes in HDF5.
-    
+
     :param filename: (str) The filename to use for saving the data.
     :param absImage: (ndarray) Absorption image data, preferably a 2d numpy array.
     :param signalImage: (ndarray) Optional signal image data.
@@ -132,3 +178,6 @@ if __name__ == '__main__':
     print "metadata:   ", meta
     
     os.remove(fname)
+
+
+
