@@ -55,6 +55,9 @@ try:
 except ImportError:
     from PySide import QtCore, QtNetwork
     from PySide.QtCore import Signal as qtSignal
+except RuntimeError:
+    from PyQt5 import QtCore, QtNetwork
+    from PyQt5.QtCore import pyqtSignal as qtSignal
 
 DEFAULT_PORT = 9090
 DEFAULT_TIMEOUT = 5000

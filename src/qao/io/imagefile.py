@@ -15,8 +15,59 @@ import h5py
 
 img_names = ["absImage", "signalImage", "flatImage", "darkImage"]
 
-def saveAbsorptionImage(filename, absImage, signalImage = None, flatImage = None, darkImage = None,
-                        metadata = {}, dtype = None):
+
+def saveImageSeries(filename, images, metadata={}, dtype=None):
+    """Use this function to save camera images taken by CCD cameras
+    The data is saved in a HDF5 file. It is encouraged to provide a dictionary of metadata,
+    stored as attributes in HDF5.
+
+    :param filename: (str) The filename to use for saving the data.
+    :param imagse: (ndarray) image data, preferably a 3d numpy array -  with first index as for image
+    :param metadata: (dict) Information to be stored as image attributes.
+    :param dtype: (numpy.dtype) Convert data to different type when saving the data.
+
+    .. seealso:: :func:`loadAbsorptionImage`
+
+    Example::
+
+    data = numpy.random.rand(3, 512, 512)
+    info = {"dwell_ms": 2.0}
+    saveImageSeries("random.hdf5", images=data, metadata=info)
+
+    """
+    # check/append file extension
+    basename, ext = os.path.splitext(filename)
+    if ext.lower() not in [".h5", ".hdf", ".hdf5"]:
+        ext += ".h5"
+
+    # create new h5 file and save data
+    fh = h5py.File(basename + ext, "w")
+
+    def storeImage(image, index=0, fh=fh):
+        if image == None:
+            print "Warning: None Type Image won't be stored"
+        name = 'image_%s' % str(index)
+        ds = fh.create_dataset(name, data=image, dtype=dtype, compression="gzip")
+        ds.attrs["CLASS"] = "IMAGE"
+        ds.attrs["IMAGE_VERSION"] = "1.4"
+
+    if len(images.shape) == 3:
+        (files, unused, unused) = images.shape
+        for index in range(files):
+            storeImage(images[index, :, :], index)
+    else:
+        storeImage(images)
+
+    for key in metadata:
+        fh.attrs[key] = metadata[key]
+    fh.close()
+
+
+def saveAbsorptionImage(filename, absImage,
+                        signalImage=None,
+                        flatImage=None,
+                        darkImage=None,
+                        metadata={}, dtype=None):
     """Use this function to save absorption images taken by CCD cameras. The data is saved in a HDF5
     file. You may optionally provide the signal-, flat- and dark-image to be saved within the same file
     as well. It is encouraged to provide a dictionary of metadata, stored as attributes in HDF5.
@@ -94,6 +145,28 @@ def loadAbsorptionImage(filename):
     fh.close()
     return images.pop("absImage"), images, metadata
 
+
+def ndarrayBase64Encode(ndarray):
+    '''
+    converts a numpy.ndarray to base64 with dtype and shape information
+    returns [dtype,base64 encoded ndarray, shape]
+    :param ndarray: numpy.ndarray
+    '''
+    import base64
+    return [str(ndarray.dtype),base64.b64encode(ndarray),ndarray.shape]
+            
+def ndarrayBase64Decode(encodedData):
+    '''
+    creates numpy.ndarray from list[dtype,base64encoded ndarray, [shape]] 
+    :param encodedData:list[dtype,base64encoded ndarray, [shape]] shape is optional
+    '''
+    import base64,numpy
+    dtype = numpy.dtype(encodedData[0])
+    arr = numpy.frombuffer(base64.decodestring(encodedData[1]),dtype)
+    if len(encodedData) > 2:
+        return arr.reshape(encodedData[2])
+    return arr
+        
 if __name__ == '__main__':
     import tempfile
     fname = os.path.join(tempfile.gettempdir(), "test.h5") 
