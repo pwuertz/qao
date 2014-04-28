@@ -113,6 +113,17 @@ class Frame(object):
         else:
             self.payload = self.data
         byteList[1] = chr(byteList[1]) 
+        
+        """
+        print "="*20
+        print "-> FIN: %s"%self.fin
+        print "-> RSV1: %i"%self.rsv1
+        print "-> RSV2: %i"%self.rsv2
+        print "-> RSV3: %i"%self.rsv3
+        print "-> OP: %i"%self.opCode
+        print "-> MASK: ", self.mask
+        print "-> LEN: %i"%self.length
+        """
           
         return ''.join(byteList)+self.payload
         
@@ -123,8 +134,8 @@ class Frame(object):
 
         self.fin            = (ord(recvData[0]) & 0b10000000) >> 7 
         self.rsv1           = (ord(recvData[0]) & 0b01000000) >> 6
-        self.rsv1           = (ord(recvData[0]) & 0b00100000) >> 5
-        self.rsv1           = (ord(recvData[0]) & 0b00010000) >> 4
+        self.rsv2           = (ord(recvData[0]) & 0b00100000) >> 5
+        self.rsv3           = (ord(recvData[0]) & 0b00010000) >> 4
         self.opCode         = (ord(recvData[0]) & 0b00001111)
         self.maskBit        = (ord(recvData[1]) & 0b10000000) >> 7
         self.length         = (ord(recvData[1]) & 0b01111111)
@@ -146,10 +157,12 @@ class Frame(object):
             self.data = self.payload
         
         """
-        print "FIN: %s"%(data['finBit'])
-        print "RSV: %i"%(data['rsvBits'])
-        print "OP: %i"%(data['opCode'])
-        print "MASK: %s"%(data['maskPresent'])
-        print "LEN: %i"%(data['dataLen'])
-        print "MASK: %x %x %x %x"%(data['maskArray'][0],data['maskArray'][1],data['maskArray'][2],data['maskArray'][3])
+        print "="*20
+        print "<- FIN: %s"%self.fin
+        print "<- RSV1: %i"%self.rsv1
+        print "<- RSV2: %i"%self.rsv2
+        print "<- RSV3: %i"%self.rsv3
+        print "<- OP: %i"%self.opCode
+        print "<- MASK: ", self.mask
+        print "<- LEN: %i"%self.length
         """
