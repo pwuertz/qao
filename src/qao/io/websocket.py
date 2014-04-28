@@ -101,7 +101,7 @@ class Frame(object):
         if self.length > 2**16:
             byteList[1] += 127
             byteList.extend(struct.pack(">Q",self.length))
-        elif self.length > 2**7:
+        elif self.length >= 2**7:
             byteList[1] += 126
             byteList.extend(struct.pack(">H",self.length))
         else:
