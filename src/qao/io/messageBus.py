@@ -49,6 +49,7 @@ import json
 import websocket
 import os
 
+__PYQT5_LOADED__ = False
 try:
     from PyQt4 import QtCore, QtNetwork
     from PyQt4.QtCore import pyqtSignal as qtSignal
@@ -56,6 +57,7 @@ except ImportError:
     from PySide import QtCore, QtNetwork
     from PySide.QtCore import Signal as qtSignal
 except RuntimeError:
+    __PYQT5_LOADED__ = True
     from PyQt5 import QtCore, QtNetwork
     from PyQt5.QtCore import pyqtSignal as qtSignal
 
@@ -133,7 +135,11 @@ class MessageBusCommunicator(QtCore.QObject):
                 while self.connection.canReadLine():
                     try:
                         line = self.connection.readLine()
-                        self.httpHeader.parser.send(str(QtCore.QString(line)))
+                        if(__PYQT5_LOADED__):
+                            line = str(line)
+                        else:
+                            line = str(QtCore.QString(line))
+                        self.httpHeader.parser.send(line)
                     except StopIteration:
                         self.handshakeDone=True
                         self._handleHeaderReceived(self.httpHeader)
