@@ -28,7 +28,7 @@ class Agilent33220:
         self._sock = self.__sock
         self.__host = host
         self.__debug = debug
-    
+
     def setHostname(self, hostname):
         self.__host = hostname
         
