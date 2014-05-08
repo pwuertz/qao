@@ -103,16 +103,37 @@ class Agilent33220:
     def isInverted(self):
         return self.query("output:polarity?") == "INV"
 
-    def setTriggeredBurst(self, ncycles = 1):
+    def setBurst(self, ncycles=1):
+        """
+        Wait for an trigger and run the configured
+        waveform for ncycles (burst mode).
+        """
+        self.send('sour:burs:mode trig')
+        self.send('sour:burs:ncyc %d' % (ncycles))
+        self.send('sour:burs:stat on')
+
+    def setTrigExt(self, ext_trig=True):
         """
         Wait for an external trigger and run the configured
         waveform for ncycles (burst mode).
         """
-        self.send('burs:mode trig')
-        self.send('burs:ncyc %d' % ncycles)
-        self.send('trig:sour ext')
-        self.send('burs:stat on')
-        
+        if ext_trig:
+            self.send('trig:sour ext')
+        else:
+            self.send('trig:sour imm')
+
+    def setTrigBus(self):
+        """
+        Sets the trigger source to manual button or listen on *trig
+        """
+        self.send('trig:sour bus')
+
+    def sendTrigg(self):
+        """
+        Sends a trigger to the device
+        """
+        self.send('*trg')
+
     def setOutputLoad(self, load = 50):
         """
         Set the output termination to the specified load (ohms).
@@ -240,12 +261,12 @@ class Agilent33220:
         self.send("func:shape user")
 
     def selectArb(self, name, samplerate, amplitude, offset, channel=1):
-    	# contrarily to applyArb, this does activate the channel and does not set the trigger to IMMEDIATELY
-		self.send("sour%d:func ARB" % channel)
-		self.send("sour%d:func:arb %s" % (channel, name))
-		self.send("sour%d:func:arb:srat %.0f" % (channel, samplerate))        
-		self.voltAmplitude(amplitude, "V", channel)
-		self.voltOffset(offset, "V", channel)
+        # contrarily to applyArb, this does activate the channel and does not set the trigger to IMMEDIATELY
+        self.send("sour%d:func ARB" % channel)
+        self.send("sour%d:func:arb %s" % (channel, name))
+        self.send("sour%d:func:arb:srat %.0f" % (channel, samplerate))
+        self.voltAmplitude(amplitude, "V", channel)
+        self.voltOffset(offset, "V", channel)
 
 AgilentFuncGen = Agilent33220
 
@@ -355,7 +376,16 @@ class Agilent33500:
         self.send('trig%d:sour ext' % channel)
         self.send('sour%d:burs:stat on' % channel)
 
-    def setTrigExt(self, ext_trig = True, channel=1):
+    def setBurst(self, ncycles=1, channel=1):
+        """
+        Wait for an trigger and run the configured
+        waveform for ncycles (burst mode).
+        """
+        self.send('sour%d:burs:mode trig' % channel)
+        self.send('sour%d:burs:ncyc %d' % (channel, ncycles))
+        self.send('sour%d:burs:stat on' % channel)
+
+    def setTrigExt(self, ext_trig=True, channel=1):
         """
         Wait for an external trigger and run the configured
         waveform for ncycles (burst mode).
@@ -364,7 +394,19 @@ class Agilent33500:
             self.send('trig%d:sour ext' % channel)
         else:
             self.send('trig%d:sour imm' % channel)
-        
+
+    def sendTrigg(self):
+        """
+        Sends a trigger to the device
+        """
+        self.send('*trg')
+
+    def setTrigBus(self, channel=1):
+        """
+        Sets the trigger source to manual button or listen on *trig
+        """
+        self.send('trig%d:sour bus' % channel)
+
     def setOutputLoad(self, load = 50, channel=1):
         """
         Set the output termination to the specified load (ohms).
