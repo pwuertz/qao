@@ -318,9 +318,8 @@ class DataTable(QtCore.QObject):
         for name in newColNames:
             # enlarge data and column info table
             pos = len(self.colInfo)
-            newColInfo = (name, set(), "object", "")
-            self.colInfo = np.insert(self.colInfo, pos, [(0, 0, 0, 0)])
-            self.colInfo[pos] = newColInfo
+            newColInfo =  np.array([(name, set(), "object", "")], dtype= self.colInfo.dtype)
+            self.colInfo = np.insert(self.colInfo, pos, newColInfo)
             self.data = np.insert(self.data, pos, [None], axis=1)
             # signal new column
             self.colInserted.emit(pos)

@@ -182,6 +182,9 @@ class MessageBusCommunicator(QtCore.QObject):
     def _handleHeaderReceived(self):
         raise NotImplementedError("Implement _handleHeaderReceived()")
 
+class ConnectionError(Exception):
+    pass
+
 class MessageBusClient(MessageBusCommunicator):
     """
     Class for sending/receiving data to/from the messageBus.
