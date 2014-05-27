@@ -3,12 +3,7 @@ import base64
 import sys
 sys.path.append("../src/qao/io")
 import messageBus
-try:
-    from PyQt4 import QtCore, QtNetwork
-    from PyQt4.QtCore import pyqtSignal as qtSignal
-except ImportError:
-    from PySide import QtCore, QtNetwork
-    from PySide.QtCore import Signal as qtSignal
+from messageBus import QtCore, QtNetwork, qtSignal
 
 import signal,time
 signal.signal(signal.SIGINT, signal.SIG_DFL)

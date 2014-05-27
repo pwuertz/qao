@@ -80,10 +80,7 @@ class MessageBusClient(WebSocketCommunicator):
 
 class QMessageBusClient(MessageBusClient):
     def __init__(self):
-        try:
-            from PyQt4 import QtCore
-        except ImportError:
-            from PySide import QtCore
+        from qao.gui.qt import QtCore
         
         MessageBusClient.__init__(self)
         self.s_notify = QtCore.QSocketNotifier(self.clientSock.fileno(),QtCore.QSocketNotifier.Read)

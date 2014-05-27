@@ -1,5 +1,5 @@
 import sys,os,time
-from PyQt4 import QtCore, QtGui
+from qao.gui.qt import QtCore, QtGui
 from qao.io import messageBusPP as messageBus
 
 class MBSubWidget(QtGui.QWidget):
@@ -22,8 +22,8 @@ class MBSubWidget(QtGui.QWidget):
         self.horizontalLayout.addWidget(self.sendButton)
         self.verticalLayout.addLayout(self.horizontalLayout)
         
-        self.connect(self.sendButton, QtCore.SIGNAL('clicked()'), self.send)
-        self.connect(self.lineEdit, QtCore.SIGNAL('returnPressed()'), self.send)
+        self.sendButton.clicked.connect(self.send)
+        self.lineEdit.returnPressed.connect(self.send)
         
     def send(self):
         self.qmbClient.publishEvent(self.name,eval(str(self.lineEdit.text())))
@@ -60,8 +60,8 @@ class MBSubMainWindow(QtGui.QWidget):
         self.tabWidget = QtGui.QTabWidget(self)
         self.tabWidget.setGeometry(QtCore.QRect(0, 0, 811, 561))
         self.verticalLayout.addWidget(self.tabWidget)
-        
-        self.connect(self.addButton, QtCore.SIGNAL('clicked()'), self.subAdder)
+
+        self.addButton.clicked.connect(self.subAdder)
         
         self.connected = False  
         self.host, ok = QtGui.QInputDialog.getText(self, 'Server address','Server to connect to:')

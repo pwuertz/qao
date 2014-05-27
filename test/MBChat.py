@@ -1,5 +1,5 @@
 import sys,os
-from PyQt4 import QtCore, QtGui
+from qao.gui.qt import QtCore, QtGui
 import QMBClient
 
 class MBChatWidget(QtGui.QWidget):
