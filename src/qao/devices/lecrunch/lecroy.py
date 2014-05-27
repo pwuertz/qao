@@ -213,6 +213,17 @@ class LeCroyScope(sock.Socket):
 
         return np.fromstring(msg[22:], wavedesc['dtype'], wavedesc['wave_array_count'])
 
+    def get_voltage_waveform(self, channel, wavedesc):
+        """
+        Request, process, and return array for channel number in Volts
+        `channel` from the oscilloscope as a numpy array.
+        """
+
+        wave = self.getwaveform(channel, wavedesc)
+        gain, offset = wavedesc['vertical_gain'], wavedesc['vertical_offset']
+        if(wavedesc['vertunit'] == 'mv'):
+            gain *= 1000.
+        return wave * gain - offset
 
 class WaveDescription(object):
     def __init__(self, desc):
@@ -227,6 +238,11 @@ class WaveDescription(object):
     def __repr__(self):
         return self.__dict__.__repr__()
 
+    def get_times(self):
+        dt = self.__dict__['horiz_interval']
+        n = self.__dict__['wave_array_count']
+        T = n * dt
+        return np.arange(0, T, dt)
 
 if __name__ == '__main__':
     import argparse
