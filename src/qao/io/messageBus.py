@@ -120,8 +120,6 @@ class MessageBusCommunicator(QtCore.QObject):
         dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
         self._sendFrame_(dataSer,opCode)
 
-
-
     def _handleReadyRead(self):
         while self.connection.bytesAvailable() > 0:
             if not self.handshakeDone:
@@ -167,7 +165,6 @@ class MessageBusCommunicator(QtCore.QObject):
             if frm.fin == 1:
                 self._handleNewPacket(self.incompleteData)
                 self.incompleteData = ''
-
 
     def _handleNewPacket(self):
         raise NotImplementedError("Implement _handleNewPacket()")
@@ -342,7 +339,6 @@ class MessageBusClient(MessageBusCommunicator):
         hdr = websocket.DefaultHTTPClientHeader()
         nWritten = self._send(hdr.createHeader(),blocking=True)
 
-
     def handleEvent(self, topic, data):
         self.receivedEvent.emit(topic, data)
         if topic in self.subscriptionCallbacks: self.subscriptionCallbacks[topic](data)
@@ -357,7 +353,6 @@ class MessageBusClient(MessageBusCommunicator):
                 data.update({'success':False})
                 data.update({'error':str(e)})
             self._sendPacket([TYPE_RPC_REPLY,funcName,data])
-
 
     def _handleHeaderReceived(self,httpHeader):
         #TODO: check header received from the server
@@ -401,6 +396,7 @@ class MessageBusClient(MessageBusCommunicator):
         except Exception, e:
             errorstr = type(e).__name__ + ", " + str(e)
             sys.stderr.write(errorstr + "\n")
+
 
 class ServerClientConnection(MessageBusCommunicator):
 

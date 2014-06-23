@@ -1,5 +1,6 @@
 import socket,sha,base64
 import sys,select,struct
+import numpy as np
 
 GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
@@ -10,8 +11,20 @@ OPCODE_CLOSE        = 0x8
 OPCODE_PING         = 0x9
 OPCODE_PONG         = 0xA
 
-def xor(data,mask):
-    return ''.join([chr(ord(data[i]) ^ mask[i%4])for i in xrange(len(data))])
+def xor(data, mask):
+    mask = struct.unpack(">BBBB", mask)
+    return ''.join([chr(ord(data[i]) ^ mask[i%4]) for i in xrange(len(data))])
+
+def np_xor(data, mask):
+    m = len(data)
+    if m % 4:
+        padded_data = data + ("\x00" * (4 - (m % 4)))
+    else:
+        padded_data = data
+    mask_int = np.frombuffer(mask, dtype="<u4")
+    view = np.frombuffer(padded_data, dtype="<u4")
+
+    return str(np.bitwise_xor(view, mask_int).view(dtype='u1')[:m].data)
 
 class HTTPHeader(object):
     def __init__(self,requestLine='', attr={}):
@@ -20,14 +33,13 @@ class HTTPHeader(object):
         self.parser = self.readHeader()
         next(self.parser)
 
-        
     def createHeader(self):
         header = "%s\r\n"%self.requestLine
         for key, value in self.attr.items():
             header = "%s%s: %s\r\n"%(header,key,value)
         header = "%s\r\n"%header
         return header
-    
+
     def readHeader(self):
         self.requestLine = (yield 1)
         while True:
@@ -106,10 +118,10 @@ class Frame(object):
             byteList.extend(struct.pack(">H",self.length))
         else:
             byteList[1] += self.length
-            
+
         if self.mask != None:
             byteList.extend(list(self.mask))
-            self.payload = xor(self.data,struct.unpack(">BBBB",self.mask))
+            self.payload = np_xor(self.data, self.mask)
         else:
             self.payload = self.data
         byteList[1] = chr(byteList[1]) 
@@ -124,10 +136,10 @@ class Frame(object):
         print "-> MASK: ", self.mask
         print "-> LEN: %i"%self.length
         """
-          
+
         return ''.join(byteList)+self.payload
-        
-    
+
+
     def _parse(self):
         data = {}
         recvData = (yield 2)
@@ -139,23 +151,23 @@ class Frame(object):
         self.opCode         = (ord(recvData[0]) & 0b00001111)
         self.maskBit        = (ord(recvData[1]) & 0b10000000) >> 7
         self.length         = (ord(recvData[1]) & 0b01111111)
-    
+
         if self.length == 126:
             self.length = struct.unpack(">H",(yield 2))[0]
-            
+
         elif self.length == 127:
             self.length = struct.unpack(">Q",(yield 8))[0]
-        
+
         if self.maskBit:
             self.mask = struct.unpack(">BBBB",(yield 4))
-    
+
         self.payload = (yield self.length)
-    
+
         if self.maskBit:
-            self.data = xor(self.payload,self.mask)
+            self.data = np_xor(self.payload, self.mask)
         else:
             self.data = self.payload
-        
+
         """
         print "="*20
         print "<- FIN: %s"%self.fin
