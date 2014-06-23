@@ -1,6 +1,6 @@
 from qao.io import messageBusPP as messageBus
 import socket,cPickle,select
-import json
+import jsonEncoder
 
 
 class ServerClientConnection(messageBus.TcpPkgClient):
@@ -18,14 +18,14 @@ class ServerClientConnection(messageBus.TcpPkgClient):
         return self.clientSock.fileno()
     
     def _sendPacketPickled(self,data):
-        self._sendPacket(json.dumps(data, separators=(',', ':'), sort_keys=True))
+        self._sendPacket(jsonEncoder.dumps(data, separators=(',', ':'), sort_keys=True))
     
     def _recvPacketPickled(self):
         try:
             dataRaw = self._recvPacket()
             print dataRaw
             try:
-                data = json.loads(dataRaw)
+                data = jsonEncoder.loads(dataRaw)
             except Exception, e:
                 print("no valid json data received: falling back to old pickle decoding")
                 data = cPickle.loads(dataRaw)

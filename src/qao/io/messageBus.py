@@ -45,7 +45,7 @@ if __name__ == "__main__":
         pass
 
 import sys,sha,time
-import json
+import jsonEncoder
 import websocket
 import os
 
@@ -117,7 +117,7 @@ class MessageBusCommunicator(QtCore.QObject):
     def _sendPacket(self, data, binary = False):
         if len(data) <= 0: return
         opCode = websocket.OPCODE_BINARY if binary else websocket.OPCODE_ASCII
-        dataSer = json.dumps(data, separators=(',', ':'), sort_keys=True)
+        dataSer = jsonEncoder.dumps(data, separators=(',', ':'), sort_keys=True)
         self._sendFrame_(dataSer,opCode)
 
     def _handleReadyRead(self):
@@ -361,7 +361,7 @@ class MessageBusClient(MessageBusCommunicator):
 
     def _handleNewPacket(self, dataRaw):
         try:
-            data = json.loads(dataRaw)
+            data = jsonEncoder.loads(dataRaw)
 
             #commands needing 1 argument
             if len(data) < 2:
@@ -435,7 +435,7 @@ class ServerClientConnection(MessageBusCommunicator):
 
     def _handleNewPacket(self, dataRaw):
         try:
-            data = json.loads(dataRaw)
+            data = jsonEncoder.loads(dataRaw)
 
             if len(data) < 2:
                 raise Exception("packet with insufficient number of args")

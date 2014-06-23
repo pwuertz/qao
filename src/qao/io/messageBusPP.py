@@ -1,5 +1,5 @@
 import socket,select,sys,time
-import json
+import jsonEncoder
 from WebSocketCommunicator import WebSocketCommunicator
 
 DEFAULT_HOST = "localhost"
@@ -52,11 +52,11 @@ class MessageBusClient(WebSocketCommunicator):
         pass
 
     def _sendPacketPickled(self,data):
-        self._sendPacket(json.dumps(data, separators=(',', ':'), sort_keys=True))
+        self._sendPacket(jsonEncoder.dumps(data, separators=(',', ':'), sort_keys=True))
         
     def _handleNewPacket(self, dataRaw):
         try:
-            data = json.loads(dataRaw)
+            data = jsonEncoder.loads(dataRaw)
 
             #print "Depickle took %.2f s"%(time.time()-picklestarttime)
             if len(data) < 2:
