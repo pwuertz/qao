@@ -15,7 +15,7 @@ class NumpyEncoder(json.JSONEncoder):
         if input object is a ndarray it will be converted into a dict holding dtype, shape and the data base64 encoded
         """
         if isinstance(obj, np.ndarray):
-            data_b64 = base64.b64encode(obj.data)
+            data_b64 = base64.b64encode(np.ascontiguousarray(obj).data)
             return dict(__ndarray__=data_b64,
                         dtype=str(obj.dtype),
                         shape=obj.shape)
