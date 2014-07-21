@@ -9,5 +9,6 @@ High level data analysis
 .. automodule:: qao.analysis.prob_dist
 .. automodule:: qao.analysis.deconvolve
 .. automodule:: qao.analysis.kalman
+.. automodule:: qao.analysis.errordiff
 
 """
