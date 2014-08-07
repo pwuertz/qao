@@ -76,13 +76,6 @@ class TicoMCS(threading.Thread):
                 # acknowledge retrieval of data
                 self.adev.Set_Par(num_mcb_readout_status, MCB_READ_STATUS_IDLE)
                 
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-=======
->>>>>>> TicoMCS: remove unneeded variable
-=======
->>>>>>> 10529b11005b4eab6286c63b64b019bac0f57136
                 self.currentSequence = IonScanSequence(acqTimestamp)
                 
                 blocks = []
@@ -94,11 +87,6 @@ class TicoMCS(threading.Thread):
                 assert i == -1, 'Bad data format'
                 for i,block in enumerate(blocks[::-1]):
                     self.currentSequence.add(IonSignal(acqTimestamp, i, block))
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 10529b11005b4eab6286c63b64b019bac0f57136
                 self.callback(self.currentSequence)
             
             if mcb_status != self.mcb_status and self.statusCallback:
@@ -144,11 +132,6 @@ if __name__ == "__main__":
         for iSig in ionSignalSequence:
             print "%i:  %i events"%(iSig.Num,len(iSig.rawData))
             
-<<<<<<< HEAD
-=======
-            
-    
->>>>>>> 10529b11005b4eab6286c63b64b019bac0f57136
     tmcs = TicoMCS(showSequence,adwinDeviceNo=0x150)
     tmcs.start()
     print "Threading"
