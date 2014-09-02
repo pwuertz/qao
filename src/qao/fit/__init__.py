@@ -61,7 +61,6 @@ A small class for multiprocessing application of fitters is implemented in :clas
 
 from gauss import Gauss1D, Gauss2D, Gauss2DRot
 from coldatoms import ThomasFermi2D, Bimodal2D
-from fitter import FitJob
 
 if __name__ == '__main__':
     import pylab as p

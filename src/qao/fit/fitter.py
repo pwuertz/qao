@@ -1,9 +1,6 @@
 import numpy as np
 import scipy.stats
 
-import multiprocessing
-from PyQt4 import QtCore
-
 ##########################################################################
 
 # default values for approx jacobian
@@ -480,60 +477,3 @@ class LevmarFitter(object):
         self.fJ(pars)
         return self._f.copy().reshape(self.data.shape)
 
-class FitJob(QtCore.QObject):
-    """
-    Class for running a fit in a multiprocess environment.
-    
-    By using the python `multiprocessing` module, a fit can be executed within a
-    seperate process for parallel processing. The FitJob class is derived from
-    QObject and signals the completion of a fit by emitting the `fitFinished` signal.
-    
-    Example::
-    
-        fitter = Gauss2D(data)
-        job = FitJob()
-        job.fitFinished.connect(callbackFunction)
-        job.startFit(fitter)
-    """
-    
-    fitFinished = QtCore.pyqtSignal()
-    
-    def __init__(self):
-        QtCore.QObject.__init__(self)
-        self.process = multiprocessing.Process(target = self.__run)
-    
-    def startFit(self, fitter):
-        """
-        Run the `fit` method of a fitter in a seperate process.
-        
-        The status of the running process can be checked by :func:`isRunning`.
-        When the fit procedure finishes, the `fitFinished` signal will be
-        emitted and the fitter object will contain the results.
-        
-        :param fitter: Fitter instance.
-        """
-        if self.process.is_alive():
-            raise RuntimeError("fit already running")
-        self.fitter = fitter
-        self.process = multiprocessing.Process(target = self.__run)
-        self.queue = multiprocessing.Queue()
-        self.process.start()
-        self.timerId = self.startTimer(20)
-    
-    def isRunning(self):
-        """
-        Return the status of a fit job.
-        
-        :returns: (bool) True if a job is currently working.
-        """
-        return self.process.is_alive()
-    
-    def __run(self):
-        pars = self.fitter.fit()
-        self.queue.put(pars)
-    
-    def timerEvent(self, event):
-        if self.process.is_alive(): return
-        self.killTimer(self.timerId)
-        self.fitter.pars_fit[:] = self.queue.get()
-        self.fitFinished.emit()
