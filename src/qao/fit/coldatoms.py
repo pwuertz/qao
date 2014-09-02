@@ -112,7 +112,7 @@ class ThomasFermi2D(LevmarFitter):
             const int ind = nx*iy+ix;
             
             const float_type is_inside_p = (float_type) ((distx*cache_x[ix] + disty*cache_y[iy]) < 1.);
-            const float_type parab_sqrt = sqrt(1. - distx*cache_x[ix] - disty*cache_y[iy]) * is_inside_p;
+            const float_type parab_sqrt = (is_inside_p) ? sqrt(1. - distx*cache_x[ix] - disty*cache_y[iy]) : 0.;
             
             f[ind] = p[0]*parab_sqrt*parab_sqrt*parab_sqrt + p[5];
             J[ind] = parab_sqrt*parab_sqrt*parab_sqrt;
@@ -231,7 +231,7 @@ class Bimodal2D(LevmarFitter):
             const float_type gauss = amp_g * cache_ex[ix] * cache_ey[iy];
             
             const float_type is_inside_p = (float_type) ((distx*distx*invrx*invrx + disty*disty*invry*invry) < 1.);
-            const float_type parab_sqrt = sqrt(1. - distx*distx*invrx*invrx - disty*disty*invry*invry) * is_inside_p;
+            const float_type parab_sqrt = (is_inside_p) ? sqrt(1. - distx*distx*invrx*invrx - disty*disty*invry*invry) : 0.;
             
             f[ind] = gauss + amp_t*parab_sqrt*parab_sqrt*parab_sqrt + p[8];
             J[ind] = parab_sqrt*parab_sqrt*parab_sqrt;
