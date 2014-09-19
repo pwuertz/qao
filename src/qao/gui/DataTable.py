@@ -15,7 +15,7 @@ import numpy as np
 import math
 import ast
 import re
-from PyQt4 import QtGui, QtCore
+from qao.gui.qt import QtCore, QtGui
 
 from MatplotlibWidget import MatplotlibWidget
 

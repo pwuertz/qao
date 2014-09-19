@@ -1,60 +1,26 @@
 """
-In Order to Safe import PyQt4 or PyQt5 use this module
+Qt API selector that can be used to switch between PyQt4/5 and PySide.
 
-    from qao.gui.qt import QtCore, QtGui, QtWidgets, QtNetwork
-
-
-
-@author:tlausch
-created: 2014-05-28
+It first tries to import Qt modules from from the currently loaded Qt binding.
+If no modules were loaded yet, import from the binding specified by the
+"QT_API" environment variable. If the variable is not set, load the first
+binding available.
 """
 
-import sys
+import os
 
-PYQT4 = 'PyQt4'
-PYQT5 = 'PyQt5'
-PYSIDE = 'PySide'
+from _loader import (loaded_api, load_qt, QT_API_PYSIDE, QT_API_PYQT, QT_API_PYQTv1, QT_API_PYQT5)
 
-def has_module(mod):
-    for key in sys.modules.keys():
-        if key.startswith(mod):
-            return True
-    return False
+QT_API = os.environ.get('QT_API', loaded_api())
+if QT_API not in [QT_API_PYSIDE, QT_API_PYQT, QT_API_PYQTv1, QT_API_PYQT5, None]:
+    raise RuntimeError("Invalid Qt API %r, valid values are: %r, %r, %r, %r" %
+                       (QT_API, QT_API_PYSIDE, QT_API_PYQT, QT_API_PYQTv1, QT_API_PYQT5))
+if QT_API is None:
+    api_opts = [QT_API_PYSIDE, QT_API_PYQT, QT_API_PYQT5]
+else:
+    api_opts = [QT_API]
 
-def import_qt4():
-    from PyQt4 import QtCore, QtGui, QtSvg, QtNetwork
-    return QtCore, QtGui, QtGui, QtSvg, QtNetwork
+QtCore, QtGui, QtSvg, QtNetwork, QT_API = load_qt(api_opts)
 
-def import_qt5():
-    from PyQt5 import QtCore, QtGui, QtWidgets, QtSvg, QtNetwork
-    class Qt45Gui(object):
-        """
-        wraps qtgui and makes pyqt4 code useable in pyqt5 environment
-        s.t. it is backward compatible
-        """
-        def __getattribute__(self, item):
-            if hasattr(QtGui, item):
-                return getattr(QtGui, item)
-            return getattr(QtWidgets, item)
-
-    qt45Gui = Qt45Gui()
-    return QtCore, qt45Gui, QtWidgets, QtSvg, QtNetwork
-
-def import_pyside():
-    from PySide import QtCore, QtGui, QtSvg, QtNetwork
-    return QtCore, QtGui, QtGui, QtSvg, QtNetwork
-
-def import_qt(version):
-    if version == PYQT4:
-        return import_qt4()
-    elif version == PYSIDE:
-        return import_pyside()
-    return import_qt5()
-
-version = PYQT5
-if has_module(PYQT4):
-    version = PYQT4
-elif has_module(PYSIDE):
-    version = PYSIDE
-
-QtCore, QtGui, QtWidgets, QtSvg, QtNetwork = import_qt(version)
+del loaded_api
+del load_qt

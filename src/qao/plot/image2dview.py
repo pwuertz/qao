@@ -16,7 +16,7 @@ Example:
 import sys
 import numpy
 from qao.plot import image
-from PyQt4 import QtGui, QtCore
+from qao.gui.qt import QtGui, QtCore
 
 # TODO: Signals and slots should only be used in QObjects.
 # QGraphicsItem is not a QObject and multiple inheritance from Qt classes

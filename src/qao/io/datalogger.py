@@ -39,7 +39,7 @@ here all data published under topic time.clock on the messagebus will be delegat
     # run qt main loop
 """
 from qao.io.messageBus import *
-from PyQt4 import QtCore
+from qao.gui.qt import QtCore
 import couchdb
 import random
 import time

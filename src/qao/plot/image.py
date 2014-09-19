@@ -26,7 +26,7 @@ A few color-maps are already provided by this module:
 
 import numpy as np
 from scipy import weave
-from PyQt4 import QtGui
+from qao.gui.qt import QtGui
 
 #########################################################################################
 

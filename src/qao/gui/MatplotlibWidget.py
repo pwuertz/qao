@@ -5,12 +5,19 @@ Matplotlib Widget
 """
 
 import numpy as np
-from PyQt4 import QtGui
+from qao.gui.qt import QtCore, QtGui, QT_API, QT_API_PYQT5
 
 # mpl stuff
 import matplotlib
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+if QT_API != QT_API_PYQT5:
+    matplotlib.rcParams['backend'] = 'Qt4Agg'
+    from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+    from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+else:
+    matplotlib.rcParams['backend'] = 'Qt5Agg'
+    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+    from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+
 from matplotlib.figure import Figure
 
 from qao.utils import unique_mean

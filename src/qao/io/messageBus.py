@@ -49,10 +49,10 @@ import jsonEncoder
 import websocket
 import os
 
-from qao.gui.qt import QtCore, QtNetwork, has_module, PYQT5, PYSIDE
-qtSignal = QtCore.Signal if has_module(PYSIDE) else QtCore.pyqtSignal
+from qao.gui.qt import QtCore, QtNetwork, QT_API, QT_API_PYSIDE, QT_API_PYQT5
+qtSignal = QtCore.Signal if (QT_API == QT_API_PYSIDE) else QtCore.pyqtSignal
 
-__PYQT5_LOADED__ = has_module(PYQT5)
+__PYQT5_LOADED__ = (QT_API == QT_API_PYQT5)
 
 DEFAULT_PORT = 9090
 DEFAULT_TIMEOUT = 5000

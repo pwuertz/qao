@@ -8,7 +8,6 @@ are too general for being categorized (yet).
 
 import bz2
 import numpy as np
-from PyQt4 import QtCore, QtGui
 from scipy import ndimage
 
 def drawPolygonMask(width, height, points):
@@ -44,6 +43,9 @@ def drawPolygonMask(width, height, points):
         p.imshow(mask)
         p.show()
     """
+    # lazy qt import
+    from qao.gui.qt import QtCore, QtGui
+
     # convert points to QPointF
     points = [QtCore.QPointF(x,y) for x,y in points]
     

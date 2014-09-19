@@ -1,5 +1,5 @@
 from TicoMCS import IonScanSequence, TicoMCS, DummyMCS
-from PyQt4 import QtCore
+from qao.gui.qt import QtCore
 
 
 class QTicoMCS(TicoMCS, QtCore.QObject):
