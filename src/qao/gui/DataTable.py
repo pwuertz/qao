@@ -15,7 +15,8 @@ import numpy as np
 import math
 import ast
 import re
-from qao.gui.qt import QtCore, QtGui
+from qao.gui.qt import QtCore, QtGui, QT_API, QT_API_PYQT5, QT_API_PYQTv1
+EMPTY_VARIANT = None if QT_API != QT_API_PYQTv1 else Qtcore.QVariant()
 
 from MatplotlibWidget import MatplotlibWidget
 
@@ -737,14 +738,14 @@ class DataTableModel(QtCore.QAbstractTableModel):
         if orientation == QtCore.Qt.Vertical and role == QtCore.Qt.DisplayRole:
             return str(section+1)
         
-        return QtCore.QVariant()
+        return EMPTY_VARIANT
  
     def data(self, index, role = QtCore.Qt.DisplayRole):
         row, col = index.row(), index.column()
         isBool = self.dataTable.colInfo[col]["dtype"] == "bool"
         
         if not index.isValid():
-            return QtCore.QVariant()
+            return EMPTY_VARIANT
         elif (role == QtCore.Qt.DisplayRole) and not isBool:
             val = self.dataTable[row, col]
             if issubclass(type(val), float):
@@ -762,17 +763,18 @@ class DataTableModel(QtCore.QAbstractTableModel):
             else:
                 return str(val)
         elif role == QtCore.Qt.BackgroundRole:
-            return QtCore.QVariant() #return QtGui.QColor("gray")
+            return EMPTY_VARIANT  # QtGui.QColor("gray")
         elif role == QtCore.Qt.DecorationRole:
-            return QtCore.QVariant()# QtGui.QColor("green")
+            return EMPTY_VARIANT  # QtGui.QColor("green")
         elif role == QtCore.Qt.CheckStateRole and isBool:
             return (QtCore.Qt.Unchecked, QtCore.Qt.Checked)[bool(self.dataTable[row, col])]
         else: 
-            return QtCore.QVariant()
+            return EMPTY_VARIANT
     
     def setData(self, index, value, role):
         row, col = index.row(), index.column()
-        value = value.toPyObject()
+        if QT_API == QT_API_PYQTv1:
+            value = value.toPyObject()
         
         # try to convert the data to a recommended dtype
         dtype = self.dataTable.colInfo[col]["dtype"]
@@ -810,7 +812,10 @@ class DataTableView(QtGui.QTableView):
         header = self.horizontalHeader()
         header.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         header.customContextMenuRequested.connect(self.headerContextMenu)
-        header.setMovable(True)
+        if QT_API == QT_API_PYQT5:
+            header.setSectionsMovable(True)
+        else:
+            header.setMovable(True)
         
         # remove cell spacing
         self.verticalHeader().setDefaultSectionSize(self.verticalHeader().fontMetrics().height()+2)
@@ -887,8 +892,11 @@ class DataTableView(QtGui.QTableView):
         a dialog for the user to choose the file to load the template from.
         """
         filefilter = "Table Template (*.tpl)"
-        fname = QtGui.QFileDialog.getOpenFileNameAndFilter(self, "Load Template", DataTableView.default_path_tpl, filefilter)[0]
-        fname = str(fname)
+        if QT_API == QT_API_PYQT5:
+            getOpenFileName = QtGui.QFileDialog.getOpenFileName
+        else:
+            getOpenFileName = QtGui.QFileDialog.getOpenFileNameAndFilter
+        fname = str(getOpenFileName(self, "Load Template", DataTableView.default_path_tpl, filefilter)[0])
         if fname:
             self.loadTemplate(fname)
             DataTableView.default_path_tpl = os.path.dirname(fname)
@@ -899,8 +907,11 @@ class DataTableView(QtGui.QTableView):
         a dialog for the user to choose the file to save the template to.
         """
         filefilter = "Table Template (*.tpl)"
-        fname = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Template", DataTableView.default_path_tpl, filefilter)[0]
-        fname = str(fname)
+        if QT_API == QT_API_PYQT5:
+            getSaveFileName = QtGui.QFileDialog.getSaveFileName
+        else:
+            getSaveFileName = QtGui.QFileDialog.getSaveFileNameAndFilter
+        fname = str(getSaveFileName(self, "Save Template", DataTableView.default_path_tpl, filefilter)[0])
         if fname:
             if os.path.splitext(fname)[1] != ".tpl": fname += ".tpl"
             self.saveTemplate(fname)
@@ -911,13 +922,20 @@ class DataTableView(QtGui.QTableView):
         Displays a dialog for saving the data in the table to a file.
         """
         filefilter = ["CSV File (*.csv)", "Python File (*.py)"]
-        fname, filt = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save Table", "%s/%s.csv"%(DataTableView.default_path,self.name), ";;".join(filefilter))
+        if QT_API == QT_API_PYQT5:
+            getSaveFileName = QtGui.QFileDialog.getSaveFileName
+        else:
+            getSaveFileName = QtGui.QFileDialog.getSaveFileNameAndFilter
+        suggested_fname = "%s/%s.csv" % (DataTableView.default_path, self.name)
+        fname, filt = getSaveFileName(self, "Save Table", suggested_fname, ";;".join(filefilter))
         fname = str(fname)
         if fname:
             filt = {0: ".csv", 1: ".py"}[filefilter.index(str(filt))]
             if os.path.splitext(fname)[1] != filt: fname += filt
             self.dataTable.save(fname)
             DataTableView.default_path = os.path.dirname(fname)
+            return True
+        return False
 
     def showColumnDialog(self):
         """
@@ -1226,7 +1244,8 @@ class DataTableTabs(QtGui.QTabWidget):
             buttons = QtGui.QMessageBox.Save | QtGui.QMessageBox.Discard | QtGui.QMessageBox.Cancel
             bn = QtGui.QMessageBox.question(self, "Unsaved Data", "Table contains unsaved data. Do you want to save before closing the table?", buttons=buttons, defaultButton=QtGui.QMessageBox.Save)
             if bn == QtGui.QMessageBox.Save:
-                self.saveTable(tableView)
+                if not tableView.saveTableDialog():
+                    return
             elif bn == QtGui.QMessageBox.Cancel:
                 return
             elif bn == QtGui.QMessageBox.Discard:
@@ -1275,7 +1294,6 @@ class DataTableTabs(QtGui.QTabWidget):
         menu.exec_(QtGui.QCursor.pos())
 
 if __name__ == "__main__":
-    QtGui.QApplication.setGraphicsSystem("raster")
     app = QtGui.QApplication([])
     
     MY_ID_KEY = "tid"
