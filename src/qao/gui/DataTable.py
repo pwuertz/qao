@@ -116,7 +116,7 @@ class DependencySolver(ast.NodeVisitor):
             tree = ast.parse(expr, mode="eval")
             solver.add(name, tree)
         
-        print solver.solve()
+        print(solver.solve())
     """
     def __init__(self, names):
         ast.NodeVisitor.__init__(self)
@@ -413,7 +413,7 @@ class DataTable(QtCore.QObject):
                 code = compile(tree, "<user expression '%s'>" % col_name, mode='eval')
                 self.expression_codes[col] = code
             except Exception as e:
-                print "error compiling user expression for column '%s'" % col_name
+                print("error compiling user expression for column '%s'" % col_name)
                 self.expression_codes[col] = compile("None", "<compile error>", mode='eval') 
         # try to solve dependencies
         try:
@@ -421,7 +421,7 @@ class DataTable(QtCore.QObject):
             for col, col_name in zip(dynamic_cols, dynamic_names):
                 self.expression_orders[col] = [column_names.index(name) for name in solver.solve(col_name)]
         except Exception as e:
-            print "error evaluating expressions,", e
+            print("error evaluating expressions,", e)
             self.expression_order_all = dynamic_cols
     
     def updateDynamic(self, row = None, col = None):
@@ -457,10 +457,6 @@ class DataTable(QtCore.QObject):
             cols = self.expression_order_all
         if not cols:
             return
-
-        for col in cols:
-            print self.colInfo["name"][col],
-        print
         
         # create masked array
         mask = np.zeros(self.data.shape, dtype=bool)
@@ -580,7 +576,7 @@ class DataTable(QtCore.QObject):
         if self.id_key in data_dict:
             idval = data_dict[self.id_key]
         else:
-            print "insertData failed, '%s' not found" % self.id_key
+            print("insertData failed, '%s' not found" % self.id_key)
             return
         itemindex = (self.data[:, 0] == idval).nonzero()[0]
         if len(itemindex):
@@ -866,7 +862,7 @@ class DataTableView(QtGui.QTableView):
             viewState = eval(viewState)
             fh.close()
         except Exception as e:
-            print e
+            print(e)
             return False
         
         # restore dataTable
@@ -877,7 +873,7 @@ class DataTableView(QtGui.QTableView):
             for i, info in enumerate(colInfos):
                 dataTable.colInfo[i] = info
         except:
-            print "error constructing table"
+            print("error constructing table")
             return False
         dataTable._rebuildExpressionCache()
         self.setDataTable(dataTable)

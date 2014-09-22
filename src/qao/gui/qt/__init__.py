@@ -9,7 +9,7 @@ binding available.
 
 import os
 
-from _loader import (loaded_api, load_qt, QT_API_PYSIDE, QT_API_PYQT, QT_API_PYQTv1, QT_API_PYQT5)
+from qao.gui.qt._loader import (loaded_api, load_qt, QT_API_PYSIDE, QT_API_PYQT, QT_API_PYQTv1, QT_API_PYQT5)
 
 QT_API = os.environ.get('QT_API', loaded_api())
 if QT_API not in [QT_API_PYSIDE, QT_API_PYQT, QT_API_PYQTv1, QT_API_PYQT5, None]:
