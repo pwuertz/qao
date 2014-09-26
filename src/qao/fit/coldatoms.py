@@ -37,16 +37,19 @@ class ThomasFermi2D(LevmarFitter):
     def guess(self):
         # fit projection to x and y direction
         projection_fitter = Gauss1D(self.data.sum(axis=0))
-        pars_x = projection_fitter.fit()
+        pars_x_guess = projection_fitter.guess()
+        pars_x = projection_fitter.fit(pars_x_guess)
+
         projection_fitter = Gauss1D(self.data.sum(axis=1))
-        pars_y = projection_fitter.fit()
-        
+        pars_y_guess = projection_fitter.guess()
+        pars_y = projection_fitter.fit(pars_y_guess)
+
         def G(p, xupper):
             x1, x2 = 0, xupper 
             upper = np.sqrt(np.pi/2)*p[2]*erf((x2-p[1])/(np.sqrt(2)*p[2]))
             lower = np.sqrt(np.pi/2)*p[2]*erf((x1-p[1])/(np.sqrt(2)*p[2]))
             return upper-lower
-        
+
         # guess parameters from 1d fits
         nx, ny = self.cache[0].size, self.cache[1].size
         amp = 0.5 * (pars_x[0]/G(pars_y, ny-1)+pars_y[0]/G(pars_x, nx-1));

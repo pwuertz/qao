@@ -24,6 +24,47 @@ def gauss2drot(x, y, pars):
 
 class TestGauss1D(TestCase):
 
+    def test_guess_without_background_correction(self):
+        """
+        Ensure that in case of a background offset which changes the momentum
+        the correct guess for gauss 1d fitting is chosen.
+        """
+        # Arrange
+        # A x0, sx, off
+        pars = 1.5, 50, 10., 0.
+        x = np.arange(1000.)
+        y = gauss1d(x, pars)
+        fitter = Gauss1D(y)
+        expected = pars
+
+        # Act
+        guess = fitter.guess()
+
+        # Assert
+        self.assertTrue(np.allclose(guess, expected, atol=.01),
+                        'Wrong Guess has been chosen for the 1D - Fit')
+
+
+    def test_guess_with_background_correction(self):
+        """
+        Ensure that in case of a background offset which changes the momentum
+        the correct guess for gauss 1d fitting is chosen.
+        """
+        # Arrange
+        # A x0, sx, off
+        pars = 1.5, 50, 10., 100.
+        x = np.arange(1000.)
+        y = gauss1d(x, pars)
+        fitter = Gauss1D(y)
+        expected = pars
+
+        # Act
+        guess = fitter.guess()
+
+        # Assert
+        self.assertTrue(np.allclose(guess, expected, atol=.01),
+                        'Wrong Guess has been chosen for the 1D - Fit')
+
     def test_fit(self):
         """
         Test that the Gauss 1D is able to fit params to data with 10*sx without noise
@@ -70,7 +111,7 @@ class TestGauss1D(TestCase):
 
             # Assert
             for i, key in enumerate(fitter.pars_name):
-                self.assertTrue(np.allclose(result[i], expected[key], atol=nsr*2),
+                self.assertTrue(np.allclose(result[i], expected[key], atol=nsr*10),
                                 "Gauss 1D Fit snr %s returned wrong value for %s: %.3f != %.3f" % (
                                     1./nsr, key, result[i], expected[key]
                                 ))
@@ -113,26 +154,25 @@ class TestGauss2DRot(TestCase):
         Test that the Gauss 2D is able to fit params rotated to data with 10*s_x, s_y without noise
         """
         # Arrange
-        A, x_0, s_x, y_0, s_y, alpha, off = 2., 45, 10, 40., 10, np.pi/4., 1.
+        pars = 2., 45, 10, 40., 10, np.pi/4., 1.
         x = np.arange(100.)
         y = np.arange(100.)
         X, Y = np.meshgrid(x, y)
-        gauss = gauss2drot(Y, X, (A, x_0, s_x, y_0, s_y, off, alpha))
-        fitter = Gauss2D(gauss.T)
-        expected = dict(
-            A=A, x_0=x_0, s_x=s_x, off=off,
-            y_0=y_0, s_y=s_y, alpha=alpha
-        )
+        gauss = gauss2drot(Y, X, pars)
+        fitter = Gauss2DRot(gauss.T)
+        expected = dict(zip(fitter.getFitParNames(), pars))
 
         # Act
         guess = fitter.guess()
-        result = fitter.fit(guess)
+        fitter.fit(guess)
+        result = fitter.getFitParsDict(False)
+        result['alpha'] = np.abs(result['alpha'])
 
         # Assert
-        for i, key in enumerate(fitter.pars_name):
-            self.assertTrue(np.allclose(result[i], expected[key], atol=.1),
+        for key in fitter.pars_name:
+            self.assertTrue(np.allclose(result[key], expected[key], atol=.1),
                             "Gauss 2D Rot Fit returned wrong value for %s: %.3f != %.3f" % (
-                                key, result[i], expected[key]
+                                key, result[key], expected[key]
                             ))
 
     def test_fit_asym(self):

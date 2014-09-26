@@ -30,7 +30,8 @@ class Gauss1D(LevmarFitter):
         cache_z = np.empty_like(self._f)
         cache_e = np.empty_like(self._f)
         self.cache = (cache_z, cache_e)
-    
+
+
     def guess(self):
         data = self.data
         dmin = data.min()
@@ -40,7 +41,23 @@ class Gauss1D(LevmarFitter):
         x0  = (np.arange(data.size) * data).sum() * (1./dsum)
         var = ((np.arange(data.size)-x0)**2 * data).sum() * (1./dsum)
         # return guess
-        return np.asfarray([dmax, x0, np.sqrt(abs(var)), dmin], dtype = DEFAULT_TYPE_NPY)
+        guess_normal = np.asfarray([dmax, x0, np.sqrt(abs(var)), dmin], dtype = DEFAULT_TYPE_NPY)
+        self.f(guess_normal)
+        error_normal = np.abs(self._f-self.data).sum()
+
+        #now do the background correction
+        data_bg = data-dmin
+        dsum_bg_inv = 1./(dsum - dmin*data.size)
+        x0_bg  = (np.arange(data.size) * data_bg).sum() * dsum_bg_inv
+        var_bg = ((np.arange(data.size)-x0_bg)**2 * data_bg).sum() * dsum_bg_inv
+        guess_bg = np.asfarray([dmax-dmin, x0_bg, np.sqrt(abs(var_bg)), dmin], dtype = DEFAULT_TYPE_NPY)
+        self.f(guess_bg)
+        error_bg = np.abs(self._f-self.data).sum()
+
+        # decide by error estimation which guess seems more apropriate
+        return guess_normal if error_normal < error_bg else guess_bg
+
+
     
     f_code = DEFAULT_TYPEDEFC + """
     const int n = Nf[0];
