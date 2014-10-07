@@ -8,17 +8,18 @@ import threading
 import time
 
 # Data from the awinmcb_readout process
-slotNum = 10
-buffersize = 1000000
+buffersize = 8000000
 
-num_new_data = 2
-num_currentSlot = 30
-num_storageBuffer = 50
-num_bufferLen = 51
+num_mcb_storage = 50
+num_mcb_storage_len = 50
 num_seqTimestamp = 81
 num_acqTimestamp = 83
-num_status = 1
-num_resetTico = 9
+num_mcb_readout_status = 5
+
+MCB_READ_STATUS_IDLE = 0
+MCB_READ_STATUS_DOWNLOAD = 1
+MCB_READ_STATUS_DATAREADY = 2
+MCB_READ_STATUS_ERROR = 3
 
 class IonSignal:
     def __init__(self,seqTimestamp,Num,rawData):
@@ -51,49 +52,47 @@ class TicoMCS(threading.Thread):
         threading.Thread.__init__(self)
         self.adev = ADwin.ADwin(adwinDeviceNo)
         self.currentSequence = None
-        self.dataPublished = False
         self.callback = callback
         self.statusCallback = statusCallback
         self.keepRunning = True
-        self.status = None
+        self.mcb_status = None
 
     def loadProcess(self):
-        self.adev.Load_Process("./adwinmcb_readout.TB5")
-        self.adev.Start_Process(5)
+        pass
+        #self.adev.Load_Process("./adwinmcb_readout.TB5")
     
     def resetStatus(self):
-        self.adev.Set_Par(num_resetTico,1)  
+        pass
 
     def run(self):
         while self.keepRunning:
-            currentSlot = self.adev.Get_Par(num_currentSlot)
-            acqTimestamp = self.adev.Get_Par(num_acqTimestamp)
-            seqTimestamp = self.adev.Get_Par(num_seqTimestamp)
-            status = self.adev.Get_Par(num_status)
+            mcb_status = self.adev.Get_Par(num_mcb_readout_status)
             
-            if not self.currentSequence or acqTimestamp != self.currentSequence.seqTimestamp:
+            if mcb_status == MCB_READ_STATUS_DATAREADY:
+                # download data from the mcb process
+                acqTimestamp = self.adev.Get_Par(num_acqTimestamp)
+                n = self.adev.Get_Par(num_mcb_storage_len)
+                data = np.frombuffer(self.adev.GetData_Long(num_mcb_storage, 1, n), dtype=np.int32).copy()
+                # acknowledge retrieval of data
+                self.adev.Set_Par(num_mcb_readout_status, MCB_READ_STATUS_IDLE)
+                
                 self.currentSequence = IonScanSequence(acqTimestamp)
-                self.dataPublished = False
-            
-            #if the slot number on the Adwin is higher then the number of scans in the stored IonScanSequence
-            #there is new data ready to taken...
-            if currentSlot > self.currentSequence.scanCount():
-                for i in range(self.currentSequence.scanCount(),currentSlot):
-                    bufferLen = self.adev.GetData_Long(num_bufferLen,i+1,1)
-                    if bufferLen[0] > 0:
-                        data = np.frombuffer(self.adev.GetData_Long(num_storageBuffer, (i-1)*buffersize+1, bufferLen[0]), dtype=np.int32).copy()
-                    else:
-                        data = np.empty((0),dtype='int32')
-                    self.currentSequence.add(IonSignal(acqTimestamp,i,data))
-            
-            #when a new sequence started, the old one is over so the data can be emitted
-            if seqTimestamp > acqTimestamp and not self.dataPublished:
+                
+                blocks = []
+                i = n - 1
+                while i >= 0:
+                    block_len = data[i]
+                    blocks.append(data[i-block_len:i])
+                    i -= block_len + 1
+                assert i == -1, 'Bad data format'
+                for i,block in enumerate(blocks[::-1]):
+                    self.currentSequence.add(IonSignal(acqTimestamp, i, block))
                 self.callback(self.currentSequence)
-                self.dataPublished = True
             
-            if status != self.status:
-                self.statusCallback(status)
-                self.status = status
+            if mcb_status != self.mcb_status and self.statusCallback:
+                self.statusCallback(mcb_status)
+            
+            self.mcb_status = mcb_status
             
             time.sleep(.5)
         
@@ -133,9 +132,7 @@ if __name__ == "__main__":
         for iSig in ionSignalSequence:
             print "%i:  %i events"%(iSig.Num,len(iSig.rawData))
             
-            
-    
-    tmcs = TicoMCS(showSequence)
+    tmcs = TicoMCS(showSequence,adwinDeviceNo=0x150)
     tmcs.start()
     print "Threading"
     time.sleep(200)
