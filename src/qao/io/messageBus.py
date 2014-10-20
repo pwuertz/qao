@@ -49,7 +49,7 @@ import jsonEncoder
 import websocket
 import os
 
-from qao.gui.qt import QtCore, QtNetwork, QT_API, QT_API_PYSIDE, QT_API_PYQT5
+from qao.gui.qt import QtCore, QtNetwork, QT_API, QT_API_PYSIDE, QT_API_PYQT5, QT_API_PYQTv1
 qtSignal = QtCore.Signal if (QT_API == QT_API_PYSIDE) else QtCore.pyqtSignal
 
 __PYQT5_LOADED__ = (QT_API == QT_API_PYQT5)
@@ -126,10 +126,10 @@ class MessageBusCommunicator(QtCore.QObject):
                 while self.connection.canReadLine():
                     try:
                         line = self.connection.readLine()
-                        if(__PYQT5_LOADED__):
-                            line = str(line)
-                        else:
+                        if QT_API == QT_API_PYQTv1:
                             line = str(QtCore.QString(line))
+                        else:
+                            line = str(line)
                         self.httpHeader.parser.send(line)
                     except StopIteration:
                         self.handshakeDone=True
