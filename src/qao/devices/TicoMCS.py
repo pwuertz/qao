@@ -109,6 +109,7 @@ class DummyMCS(threading.Thread):
         self.scans = scans  #number of scans
         self.length = length #length of the gate in s
         self.frq = frq
+        self.mcb_status = MCB_READ_STATUS_DATAREADY
         
     def run(self):
         while self.keepRunning:
