@@ -122,6 +122,108 @@ class Gauss1D(LevmarFitter):
             pars = self.pars_fit
         return np.sqrt(2.*np.pi) * pars[0] * pars[2]
 
+
+class Gauss1DAsym(LevmarFitter):
+    r"""
+    Fitter for asymmetric one-dimensional Gaussian functions.
+    
+    The data to be fitted is interpreted as evenly spaced measurements.
+    
+     
+    .. math::
+
+        f_l(x) = A\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma_1^2}\right] + \text{off}
+        f_r(x) = A\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma_2^2}\right] + \text{off}
+    
+    The first function is used for all x < x_0, the second for all x >= x_0.
+    
+    The order of the fit parameters is (A, x_0, s1, s2, off). 
+    
+    :param data: (ndarray) Array of measurements.    
+    """
+    
+    def __init__(self, data):
+        LevmarFitter.__init__(self, ["A", "x_0", "s1", "s2", "off"], data)
+
+        cache_z = np.empty_like(self._f)
+        cache_e = np.empty_like(self._f)
+        self.cache = (cache_z, cache_e)
+
+    def guess(self):
+        g1d_pars = Gauss1D(self.data).guess()
+        # symmetric gauss guess
+        return g1d_pars[[0, 1, 2, 2, 3]]
+
+    f_code = DEFAULT_TYPEDEFC + """
+    const int n = Nf[0];
+    const float_type inv_s1_sq = 1.0/(p[2]*p[2]);
+    const float_type inv_s2_sq = 1.0/(p[3]*p[3]);
+    for (int i = 0; i < n; ++i) {
+        float_type dist = i-p[1];
+        float_type left = float_type(dist < 0);
+        cache_z[i] = dist * (inv_s1_sq*left + inv_s2_sq*(1.-left));
+        cache_e[i] = exp(-.5*dist*cache_z[i]);
+        f[i] = p[0] * cache_e[i] + p[4];
+    }
+    """
+    
+    def f(self, pars):
+        f = self._f
+        cache_z, cache_e = self.cache
+        p = pars
+        weave.inline(self.f_code, ["f", "cache_z", "cache_e", "p"], **opt_args)
+    
+    fJ_code = DEFAULT_TYPEDEFC + """
+    const int n = Nf[0];
+    const float_type inv_s1_sq = 1.0/(p[2]*p[2]);
+    const float_type inv_s2_sq = 1.0/(p[3]*p[3]);
+    for (int i = 0; i < n; ++i) {
+        float_type dist = i-p[1];
+        float_type left = float_type(dist < 0);
+        cache_z[i] = dist * (inv_s1_sq*left + inv_s2_sq*(1.-left));
+        cache_e[i] = exp(-.5*dist*cache_z[i]);
+        f[i] = p[0] * cache_e[i] + p[4];
+    }
+
+    for(int i=0; i<n; ++i){
+        J[i] = cache_e[i];
+    }
+    for(int i=0; i<n; ++i){
+        J[n+i] = cache_z[i] * p[0] * cache_e[i];
+    }
+    for(int i=0; i<n; ++i){
+        float_type left = float_type(i-p[1] < 0);
+        J[2*n+i] = left * cache_z[i]*cache_z[i]* p[2] * p[0] * cache_e[i];
+        J[3*n+i] = (1.-left) * cache_z[i]*cache_z[i]* p[3] * p[0] * cache_e[i];
+    }
+    for(int i=0; i<n; ++i){
+        J[4*n+i] = 1.;
+    }
+    """
+
+    def fJ(self, pars):
+        f, J = self._f, self._J
+        cache_z, cache_e = self.cache
+        p = pars
+        weave.inline(self.fJ_code, ["f", "J", "cache_z", "cache_e", "p"], **opt_args)
+
+    def sanitizePars(self, pars):
+        pars[2] = abs(pars[2])
+        pars[3] = abs(pars[3])
+        return pars
+
+    def integral(self, pars = None):
+        """
+        Calculate the integral of the gauss function defined by `pars`.
+        
+        :param pars: (ndarray) Parameters or `None` to use param from fit.
+        :return: (float) Value of the integral.
+        """
+        if pars is None:
+            pars = self.pars_fit
+        return .5 * np.sqrt(2.*np.pi) * pars[0] * (pars[2] + pars[3])
+
+
 class Gauss2D(LevmarFitter):
     r"""
     Fitter for two-dimensional axis aligned Gauss functions.
