@@ -95,6 +95,11 @@ class IonSignalFile():
             raise Exception("Could not open file %s"%(fname))
         self.scanNames = []
         self.metadata = dict(self.fh.attrs)
+        
+        if not "seqTimestamp" in self.metadata:
+            #We are desperate at that point: Try to extract seqTimestamp from filename
+            self.metadata["seqTimestamp"] = float(((fname.split("/")[-1]).split(".")[0]).split("-")[-1])
+        
         self.seqTimestamp = self.metadata["seqTimestamp"]
         
         for name in self.fh:
@@ -146,7 +151,7 @@ class IonSignalFile():
     def getScanMetadata(self,name,keepOpen=False):
         if not self.fh:
             self.openFile()
-        metadata = dict(self.fh.attrs)
+        metadata = copy.copy(self.metadata)
         metadata.update(dict(self.fh["%s_data"%name].attrs)) 
         return metadata
         if not keepOpen:
@@ -188,7 +193,8 @@ class IonMeasurement():
             if infile.split('.')[-1] not in ["h5", "hdf", "hdf5"]: continue
             try:
                 isf = IonSignalFile("%s%s"%(dirname,infile))
-            except:
+            except Exception as e:
+                print "error: %s"%(e.message)
                 continue            
             if len(seqTimestamps) > 0 and str(isf.seqTimestamp) not in seqTimestamps: 
                 continue
