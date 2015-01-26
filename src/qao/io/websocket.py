@@ -16,6 +16,8 @@ def xor(data, mask):
     return ''.join([chr(ord(data[i]) ^ mask[i%4]) for i in xrange(len(data))])
 
 def np_xor(data, mask):
+    if isinstance(mask, tuple):
+        mask = ''.join([chr(b) for b in mask])
     m = len(data)
     if m % 4:
         padded_data = data + ("\x00" * (4 - (m % 4)))
