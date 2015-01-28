@@ -16,7 +16,7 @@ import math
 import ast
 import re
 from qao.gui.qt import QtCore, QtGui, QT_API, QT_API_PYQT5, QT_API_PYQTv1
-EMPTY_VARIANT = None if QT_API != QT_API_PYQTv1 else Qtcore.QVariant()
+EMPTY_VARIANT = None if QT_API != QT_API_PYQTv1 else QtCore.QVariant()
 
 from MatplotlibWidget import MatplotlibWidget
 
