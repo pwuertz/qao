@@ -52,6 +52,9 @@ def commit_api(api):
     elif api == QT_API_PYQT:
         ID.forbid('PySide')
         ID.forbid('PyQt5')
+    elif api == QT_API_PYQTv1:
+        ID.forbid('PySide')
+        ID.forbid('PyQt5')
     else:
         ID.forbid('PyQt4')
         ID.forbid('PySide')
