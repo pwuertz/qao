@@ -196,7 +196,7 @@ class IonMeasurement():
             except Exception as e:
                 print "error: %s"%(e.message)
                 continue            
-            if len(seqTimestamps) > 0 and str(isf.seqTimestamp) not in seqTimestamps: 
+            if len(seqTimestamps) > 0 and float(isf.seqTimestamp) not in seqTimestamps: 
                 continue
             self.ionSignalFiles.update({int(isf.seqTimestamp):isf})
         
