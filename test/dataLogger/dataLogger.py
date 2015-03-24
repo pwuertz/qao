@@ -9,12 +9,12 @@ from qao.io.datalogger import DataLogClient, DataLogServer
 # implement basic console server
 class MockServer(DataLogServer):
     def __init__(self):
-        DataLogServer.__init__(self,logTime=.5,database='mock')
+        DataLogServer.__init__(self, logTime=.5, database='mock')
         self.logged.connect(self.printEventLogged)
         self.time = 0
         self.testdata = None
         
-    def start(self,testdata=None):
+    def start(self, testdata=None):
         self.testdata = testdata
         DataLogServer.start(self)
         
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     
     from PyQt4 import QtCore
     from qao.io import messageBus
-        
+
     try:
             mbcli = messageBus.MessageBusClient()
             mbcli.connectToServer('localhost')

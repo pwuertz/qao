@@ -1,7 +1,7 @@
 import numpy as np
 import base64
 import sys
-sys.path.append("../src/qao/io")
+sys.path.append("../../src/qao/io")
 import messageBus
 from messageBus import QtCore, QtNetwork, qtSignal
 

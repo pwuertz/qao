@@ -1,6 +1,5 @@
 import sys
-sys.path.append("../src/")
-sys.path.append("../src/qao/io")
+sys.path.append("../../src/qao/io")
 import messageBus
 from messageBus import QtCore, qtSignal
 import signal, time
