@@ -18,7 +18,7 @@ class MBSubWidget(QtGui.QWidget):
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.lineEdit = QtGui.QLineEdit(self)
         self.horizontalLayout.addWidget(self.lineEdit)
-        self.sendButton = QtGui.QPushButton("Send",self)
+        self.sendButton = QtGui.QPushButton("Send", self)
         self.horizontalLayout.addWidget(self.sendButton)
         self.verticalLayout.addLayout(self.horizontalLayout)
         
@@ -29,7 +29,7 @@ class MBSubWidget(QtGui.QWidget):
         self.qmbClient.publishEvent(self.name,eval(str(self.lineEdit.text())))
         self.lineEdit.clear()
         
-    def addLine(self,topic,data):
+    def addLine(self, topic, data):
         if isinstance(data,dict):
             data = data.items()
         tableStr = "<table><tr><th rowspan='%i' style='padding-right:25px'><font color='#FF0000'>%s</font></th><td>Arg 1:</td><td style='border-top:1px solid black; margin:0px;'>%s</td></tr>"%(len(data),time.strftime("%d. %m. %H:%M:%S"),data[0])
@@ -67,10 +67,7 @@ class MBSubMainWindow(QtGui.QWidget):
         self.host, ok = QtGui.QInputDialog.getText(self, 'Server address','Server to connect to:')
         
         self.mbConnect(self.host,9090)
-        
-        
-        
-    
+
     def mbConnect(self,host,port):
         self.qmbClient = messageBus.QMessageBusClient()
         self.qmbClient.connectToServer(host,port)

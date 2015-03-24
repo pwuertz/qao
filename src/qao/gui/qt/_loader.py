@@ -105,18 +105,25 @@ def has_binding(api):
                    QT_API_PYQT_DEFAULT: 'PyQt4'}
     module_name = module_name[api]
 
-    import imp
+    def find_module(module):
+        return "%s.%s" % (module_name, module) in sys.modules.keys()
+
     try:
         #importing top level PyQt4/PySide module is ok...
-        mod = __import__(module_name)
-        #...importing submodules is not
-        imp.find_module('QtCore', mod.__path__)
-        imp.find_module('QtGui', mod.__path__)
-        imp.find_module('QtSvg', mod.__path__)
-        if api == QT_API_PYQT5:
+        if find_module("QtGui") or find_module("QtSvg") or find_module("QtCore"):
+            return True
+
+        if api == QT_API_PYQT5 and find_module("QtWidgets"):
             # QT5 requires QtWidgets too
-            imp.find_module('QtWidgets', mod.__path__)
-        return True
+            # imp.find_module('QtWidgets', mod.__path__)
+            return True
+
+        # we can also safely check PySide version
+        if api == QT_API_PYSIDE:
+            mod = __import__(module_name)
+            return check_version(mod.__version__, '1.0.3')
+        else:
+            return True
     except ImportError:
         return False
 

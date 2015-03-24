@@ -1,8 +1,9 @@
 import sys
+sys.path.append("../src/")
 sys.path.append("../src/qao/io")
 import messageBus
 from messageBus import QtCore, qtSignal
-import signal,time
+import signal, time
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 app = QtCore.QCoreApplication([])
@@ -26,18 +27,18 @@ def infoPrinter(topic, rpcFunctions):
 		print "%s(%s) returns %i parameter"%(key,value['argList'],value['retCount'])
 		#print "%s(%s) returns %i parameter"%(key,key['argList'],int(key['retCount']))
 
-#define new client
+# define new client
 client = messageBus.MessageBusClient()
-client.connectToServer("localhost",9090)
+client.connectToServer("localhost", 9090)
 client.receivedInfo.connect(infoPrinter)
 
-#subscribe
+# subscribe
 client.subscribe("testing")
 client.rpcInfoRequest()
-#register dummy function
-client.rpcRegister('testing.dummy',['count'],1,dummyFunction)
+# register dummy function
+client.rpcRegister('testing.dummy', ['count'], 1, dummyFunction)
 client.rpcInfoRequest()
-#call dummy function with some argument
-client.rpcCall('testing.dummy',{'count':12},retFunction)
+# call dummy function with some argument
+client.rpcCall('testing.dummy', {'count': 12}, retFunction)
 
 app.exec_()
