@@ -34,8 +34,28 @@ to a specific topic you want to receive callbacks for::
 
     # run qt main loop
 """
+import argparse
 
 if __name__ == "__main__":
+    """
+    Add Arguments to explicitly choose the Qt version you like to run the messageBusServer.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--Qt4", action="store_true",
+                        help="If you like to run messagebus Server using PyQt4 provide this flag"
+                        )
+    parser.add_argument("--PySide", action="store_true",
+                        help="If you like to run messagebus Server using PySide provide this flag")
+
+    args = parser.parse_args()
+
+    if args.Qt4:
+        from PyQt4 import QtCore
+    elif args.PySide:
+        from PySide import QtCore
+    else:
+        from PyQt5 import QtCore
+
     # enable memory debugger if possible
     try:
         import guppy.heapy.RM
