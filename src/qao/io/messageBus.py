@@ -35,6 +35,7 @@ to a specific topic you want to receive callbacks for::
     # run qt main loop
 """
 import argparse
+import six
 
 if __name__ == "__main__":
     """
@@ -60,14 +61,15 @@ if __name__ == "__main__":
     try:
         import guppy.heapy.RM
         from guppy import hpy; hp=hpy()
-        print "enabled heapy memory debug"
+        print("enabled heapy memory debug")
     except ImportError:
         pass
 
-import sys,sha,time
-import jsonEncoder
-import websocket
 import os
+import sys
+import time
+from qao.io import websocket
+from qao.io import jsonEncoder
 
 from qao.gui.qt import QtCore, QtNetwork, QT_API, QT_API_PYSIDE, QT_API_PYQT5, QT_API_PYQTv1
 qtSignal = QtCore.Signal if (QT_API == QT_API_PYSIDE) else QtCore.pyqtSignal
@@ -172,7 +174,7 @@ class MessageBusCommunicator(QtCore.QObject):
 
     def _handleFrame_(self,frm):
         if frm.opCode == websocket.OPCODE_CLOSE:
-            print "Disconnect Packet received. Cleaning up Communicator and wait for disconnect."
+            print("Disconnect Packet received. Cleaning up Communicator and wait for disconnect.")
             self._cleanupCommunicator_()
             return
 
@@ -192,8 +194,10 @@ class MessageBusCommunicator(QtCore.QObject):
     def _handleHeaderReceived(self):
         raise NotImplementedError("Implement _handleHeaderReceived()")
 
+
 class ConnectionError(Exception):
     pass
+
 
 class MessageBusClient(MessageBusCommunicator):
     """
@@ -229,7 +233,7 @@ class MessageBusClient(MessageBusCommunicator):
         self.rpcCallbacks = {}
         self.rpcPendingRequests = {}
 
-    def connectToServer(self, host, port = DEFAULT_PORT, timeout = DEFAULT_TIMEOUT):
+    def connectToServer(self, host, port=DEFAULT_PORT, timeout=DEFAULT_TIMEOUT):
         """
         Connect the client to a messageBus server.
 
@@ -248,7 +252,7 @@ class MessageBusClient(MessageBusCommunicator):
         Disconnect the client from the current messageBus server.
         """
         self._cleanupCommunicator_()
-        self.subscriptionCallbacks={}
+        self.subscriptionCallbacks = {}
         self.connection.disconnectFromHost()
 
     def isConnected(self):
@@ -301,7 +305,7 @@ class MessageBusClient(MessageBusCommunicator):
         topic = str(topic)
         self._sendPacket([TYPE_PUBLISH, topic, data])
 
-    def waitForEventPublished(self, timeout = DEFAULT_TIMEOUT):
+    def waitForEventPublished(self, timeout=DEFAULT_TIMEOUT):
         """
         Block until all data is sent.
 
@@ -326,8 +330,8 @@ class MessageBusClient(MessageBusCommunicator):
         :param retCount: (int) number of return values the function gives.
         :param callback: (function) a reference to the function that should be called if a remote client requests it.
         """
-        self.rpcCallbacks.update({funcName:callback})
-        self._sendPacket([TYPE_RPC_REGISTER, funcName, {'argList':argList, 'retCount':retCount}])
+        self.rpcCallbacks.update({funcName: callback})
+        self._sendPacket([TYPE_RPC_REGISTER, funcName, {'argList': argList, 'retCount': retCount}])
 
     def rpcUnregister(self, funcName):
         """
@@ -339,7 +343,7 @@ class MessageBusClient(MessageBusCommunicator):
             del(self.rpcCallbacks[funcName])
             self._sendPacket([TYPE_RPC_UNREGISTER, funcName])
 
-    def rpcCall(self, funcName, args, answerCallback = None):
+    def rpcCall(self, funcName, args, answerCallback=None):
         """
         Call a remote function via RPC.
 
@@ -349,8 +353,8 @@ class MessageBusClient(MessageBusCommunicator):
                                           Two parameters will be given to the function: 1. the funcName, 2. a dictionary containing the result of the function call in the key 'ret' as well as the success status of the function call in the key 'succes' (bool).
         """
         identifier = str(int(time.time()*1000))
-        self._sendPacket([TYPE_RPC_REQUEST, funcName, {'args':args, 'id':identifier}])
-        self.rpcPendingRequests.update({identifier:answerCallback})
+        self._sendPacket([TYPE_RPC_REQUEST, funcName, {'args': args, 'id': identifier}])
+        self.rpcPendingRequests.update({identifier: answerCallback})
 
     def rpcInfoRequest(self):
         self._sendPacket([TYPE_INFO, INFO_RPC_LIST])
@@ -361,18 +365,19 @@ class MessageBusClient(MessageBusCommunicator):
 
     def handleEvent(self, topic, data):
         self.receivedEvent.emit(topic, data)
-        if topic in self.subscriptionCallbacks: self.subscriptionCallbacks[topic](data)
+        if topic in self.subscriptionCallbacks:
+            self.subscriptionCallbacks[topic](data)
 
     def _handleRPCRequest(self, funcName, data):
         if funcName in self.rpcCallbacks:
             try:
                 ret = self.rpcCallbacks[funcName](data['args'])
-                data.update({'ret':ret})
-                data.update({'success':True})
-            except Exception, e:
-                data.update({'success':False})
-                data.update({'error':str(e)})
-            self._sendPacket([TYPE_RPC_REPLY,funcName,data])
+                data.update({'ret': ret})
+                data.update({'success': True})
+            except Exception as e:
+                data.update({'success': False})
+                data.update({'error': str(e)})
+            self._sendPacket([TYPE_RPC_REPLY, funcName, data])
 
     def _handleHeaderReceived(self,httpHeader):
         #TODO: check header received from the server
@@ -413,7 +418,7 @@ class MessageBusClient(MessageBusCommunicator):
                     del(self.rpcPendingRequests[data[2]['id']])
                 return
 
-        except Exception, e:
+        except Exception as e:
             errorstr = type(e).__name__ + ", " + str(e)
             sys.stderr.write(errorstr + "\n")
 
@@ -440,17 +445,17 @@ class ServerClientConnection(MessageBusCommunicator):
         try:
             self._sendPacket([pkgType, topic, data])
         except MemoryError:
-            print "Out of memory"
-            print hp.heap()
+            print("Out of memory")
+            print(hp.heap())
             exit()
 
     def sendRPCRequest(self, func, data, issuer):
         if not 'id' in data:
-            data.update({'id':str(int(time.time()*1000))})
-        self.rpcPendingRequests.update({data['id']:issuer})
+            data.update({'id': str(int(time.time()*1000))})
+        self.rpcPendingRequests.update({data['id']: issuer})
         self.forwardEvent(func, data, pkgType=TYPE_RPC_REQUEST)
 
-    def _handleHeaderReceived(self,httpHeader):
+    def _handleHeaderReceived(self, httpHeader):
         self._send(httpHeader.buildServerReply().createHeader())
 
     def _handleNewPacket(self, dataRaw):
@@ -465,12 +470,12 @@ class ServerClientConnection(MessageBusCommunicator):
                 if len(data) < 3:
                     raise Exception("packet with insufficient number of args")
                 if not 'argList' in data[2]:
-                    print "Could not register RPC call %s since argList was missing in registration packet"%(data[1])
+                    print("Could not register RPC call %s since argList was missing in registration packet" % (data[1]))
                     return
                 if not 'retCount' in data[2]:
-                    print "Could not register RPC call %s since retCount was missing in registration packet"%(data[1])
+                    print("Could not register RPC call %s since retCount was missing in registration packet" % (data[1]))
                     return
-                self.rpcFunctions.update({data[1]:data[2]})
+                self.rpcFunctions.update({data[1]: data[2]})
                 return
 
             # remove the second arg to the list of rpcFunctions
@@ -484,14 +489,14 @@ class ServerClientConnection(MessageBusCommunicator):
                 if len(data) < 2:
                     raise Exception("packet with insufficient number of args")
                 if data[1] == INFO_RPC_LIST:
-                    self.infoRequested.emit(data[1],self)
+                    self.infoRequested.emit(data[1], self)
                 return
 
             # handle RPC request
             if data[0] == TYPE_RPC_REQUEST:
                 if len(data) < 3:
                     raise Exception("packet with insufficient number of args")
-                self.rpcRequested.emit(data[1],data[2], self)
+                self.rpcRequested.emit(data[1], data[2], self)
                 return
 
             # handle RPC reply
@@ -499,11 +504,11 @@ class ServerClientConnection(MessageBusCommunicator):
                 if len(data) < 3:
                     raise Exception("packet with insufficient number of args")
                 if not data[1] in self.rpcFunctions:
-                    print "Sending reply for unregistered Function %s"%(data[1])
+                    print("Sending reply for unregistered Function %s" % (data[1]))
                     return
                 if 'id' in data[2] and data[2]['id'] in self.rpcPendingRequests:
-                    self.rpcPendingRequests[data[2]['id']].forwardEvent(data[1],data[2], pkgType=TYPE_RPC_REPLY)
-                self.rpcReplied.emit(data[1],data[2])
+                    self.rpcPendingRequests[data[2]['id']].forwardEvent(data[1], data[2], pkgType=TYPE_RPC_REPLY)
+                self.rpcReplied.emit(data[1], data[2])
                 return
 
             # add the second arg to the list of subscriptions
@@ -526,12 +531,12 @@ class ServerClientConnection(MessageBusCommunicator):
             # packet not recognized
             raise Exception("unrecognized instruction in packet")
 
-        except Exception, e:
+        except Exception as e:
             errorstr = type(e).__name__ + ", " + str(e)
             # notify the client about the error
             self._sendPacket([TYPE_NAK, errorstr])
             # print the error server side
-            print "error reading packet:", errorstr
+            print("error reading packet:", errorstr)
 
 class MessageBusServer(QtCore.QObject):
 
@@ -556,7 +561,7 @@ class MessageBusServer(QtCore.QObject):
         client.infoRequested.connect(self._handleInfoRequest)
         self.clients.append(client)
         self.clientConnected.emit(client)
-        print "new client connected (active connections: %d)" % len(self.clients)
+        print("new client connected (active connections: %d)" % len(self.clients))
         assert (not self.server.hasPendingConnections()) # TODO: do we have to check for multiple connections?
 
     def _handlePublish(self, topic, data):
@@ -568,15 +573,15 @@ class MessageBusServer(QtCore.QObject):
         self.eventPublished.emit(topic, data)
 
     def _handleRPCRequest(self, func, data, issuer):
-        func = unicode(func)
+        func = six.u(func)
         for client in self.clients:
             if func in client.rpcFunctions:
                 if 'args' in data and len(data['args']) == len(client.rpcFunctions[func]['argList']):
-                    client.sendRPCRequest(func,data,issuer)
+                    client.sendRPCRequest(func, data, issuer)
                 else:
-                    print "Arguments messed up for requested function %s"%(func)
+                    print("Arguments messed up for requested function %s" % (func))
 
-    def _handleInfoRequest(self,typ, issuer):
+    def _handleInfoRequest(self, typ, issuer):
         rpcFunctions = {}
         for client in self.clients:
             rpcFunctions.update(client.rpcFunctions)
@@ -586,7 +591,7 @@ class MessageBusServer(QtCore.QObject):
         client = self.sender()
         self.clientDisconnected.emit(client)
         self.clients.remove(client)
-        print "client disconnected (active connections: %d)" % len(self.clients)
+        print("client disconnected (active connections: %d)" % len(self.clients))
 
 if __name__ == "__main__":
     # enable CTRL+C break
@@ -600,9 +605,9 @@ if __name__ == "__main__":
             self.eventPublished.connect(self.printEventPublished)
 
         def printEventPublished(self, topic, data):
-            print "new event: %s" % str(topic)
+            print("new event: %s" % str(topic))
 
-    print "Starting MessageServer at port %d" % DEFAULT_PORT
+    print("Starting MessageServer at port %d" % DEFAULT_PORT)
     app = QtCore.QCoreApplication([])
     serv = ConsoleServer()
     app.exec_()
