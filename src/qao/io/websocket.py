@@ -1,6 +1,20 @@
-import socket,sha,base64
-import sys,select,struct
+import base64
+import struct
 import numpy as np
+
+try:
+    import sha
+
+    def sha1(text):
+        return sha.new(text)
+except ImportError:
+    # sha is deprecated in python3.
+    # use haslib instead
+    import hashlib
+
+    def sha1(text):
+        return hashlib.sha1(text)
+
 
 GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
@@ -11,9 +25,11 @@ OPCODE_CLOSE        = 0x8
 OPCODE_PING         = 0x9
 OPCODE_PONG         = 0xA
 
+
 def xor(data, mask):
     mask = struct.unpack(">BBBB", mask)
-    return ''.join([chr(ord(data[i]) ^ mask[i%4]) for i in xrange(len(data))])
+    return ''.join([chr(ord(data[i]) ^ mask[i%4]) for i in range(len(data))])
+
 
 def np_xor(data, mask):
     if isinstance(mask, tuple):
@@ -28,8 +44,9 @@ def np_xor(data, mask):
 
     return str(np.bitwise_xor(view, mask_int).view(dtype='u1')[:m].data)
 
+
 class HTTPHeader(object):
-    def __init__(self,requestLine='', attr={}):
+    def __init__(self, requestLine='', attr={}):
         self.attr = attr
         self.requestLine = requestLine
         self.parser = self.readHeader()
@@ -50,8 +67,8 @@ class HTTPHeader(object):
             try:
                 key, value = line.split(':',1)
                 self.attr.update({key.strip("\n\r\t "):value.strip("\n\r\t ")})
-            except Exception, e:
-                print "could not interpret header line: %s: %s"%(line,e)
+            except Exception as e:
+                print("could not interpret header line: %s: %s" % (line, e))
     
     def buildServerReply(self):
         header = 'HTTP/1.1 101 Switching Protocols'
@@ -67,7 +84,6 @@ class HTTPHeader(object):
         return hdr
         
 
-
 class DefaultHTTPClientHeader(HTTPHeader):
     def __init__(self):
         HTTPHeader.__init__(self)
@@ -79,6 +95,7 @@ class DefaultHTTPClientHeader(HTTPHeader):
                         'Origin': 'http://example.com',\
                         'Sec-WebSocket-Protocol': 'chat, superchat',\
                         'Sec-WebSocket-Version': 13}
+
 
 class Frame(object):
     def __init__(self, opCode=None, data=b'', mask=None, fin=0, rsv1=0, rsv2=0, rsv3=0):
@@ -96,7 +113,7 @@ class Frame(object):
         self.parser = self._parse()
         
     def build(self):
-        byteList = [0,0]
+        byteList = [0, 0]
         byteList[0]  = self.fin <<  7    #fin-bit
         byteList[0] += self.rsv1 << 6    #rsv-bit
         byteList[0] += self.rsv2 << 5    #rsv-bit
@@ -105,13 +122,13 @@ class Frame(object):
         
         byteList[0] = chr(byteList[0])
         
-        #check whether to set the mask bit
-        if self.mask != None:
+        # check whether to set the mask bit
+        if self.mask is not None:
             byteList[1] = 1 << 7
         else:
             byteList[1] = 0
         
-        #check what length to write
+        # check what length to write
         if self.length > 2**16:
             byteList[1] += 127
             byteList.extend(struct.pack(">Q",self.length))
@@ -121,7 +138,7 @@ class Frame(object):
         else:
             byteList[1] += self.length
 
-        if self.mask != None:
+        if self.mask is not None:
             byteList.extend(list(self.mask))
             self.payload = np_xor(self.data, self.mask)
         else:
@@ -139,11 +156,9 @@ class Frame(object):
         print "-> LEN: %i"%self.length
         """
 
-        return ''.join(byteList)+self.payload
-
+        return ''.join(byteList) + self.payload
 
     def _parse(self):
-        data = {}
         recvData = (yield 2)
 
         self.fin            = (ord(recvData[0]) & 0b10000000) >> 7 
@@ -155,13 +170,13 @@ class Frame(object):
         self.length         = (ord(recvData[1]) & 0b01111111)
 
         if self.length == 126:
-            self.length = struct.unpack(">H",(yield 2))[0]
+            self.length = struct.unpack(">H", (yield 2))[0]
 
         elif self.length == 127:
-            self.length = struct.unpack(">Q",(yield 8))[0]
+            self.length = struct.unpack(">Q", (yield 8))[0]
 
         if self.maskBit:
-            self.mask = struct.unpack(">BBBB",(yield 4))
+            self.mask = struct.unpack(">BBBB", (yield 4))
 
         self.payload = (yield self.length)
 
