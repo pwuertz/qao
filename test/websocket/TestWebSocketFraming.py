@@ -9,6 +9,9 @@ from qao.io.websocket import Frame
 
 
 class TestFrame(unittest.TestCase):
+    """
+    Ensure that the framing works properly.
+    """
     def setUp(self):
         self.data = json.dumps(["this", "is", "only", 1, "test"])
 

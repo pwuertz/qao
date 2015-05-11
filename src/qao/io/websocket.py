@@ -13,7 +13,7 @@ except ImportError:
     import hashlib
 
     def sha1(text):
-        return hashlib.sha1(text)
+        return hashlib.sha1(text.encode())
 
 
 GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
@@ -53,34 +53,39 @@ class HTTPHeader(object):
         next(self.parser)
 
     def createHeader(self):
-        header = "%s\r\n"%self.requestLine
-        for key, value in self.attr.items():
-            header = "%s%s: %s\r\n"%(header,key,value)
-        header = "%s\r\n"%header
-        return header
+        lines = [self.requestLine]
+        lines.extend(["%s: %s" % (key, value) for key, value in self.attr.items()])
+        lines.append("\r\n")
+        return "\r\n".join(lines)
 
     def readHeader(self):
         self.requestLine = (yield 1)
+
+        def strip(text, stripe="\n\r\t "):
+            return text.strip(stripe)
+
         while True:
             line = (yield 1)
-            if line.strip("\n\r\t ") == '': break
+            if strip(line) == '':
+                break
             try:
-                key, value = line.split(':',1)
-                self.attr.update({key.strip("\n\r\t "):value.strip("\n\r\t ")})
+                key, value = line.split(':', 1)
+                self.attr[strip(key)] = strip(value)
             except Exception as e:
                 print("could not interpret header line: %s: %s" % (line, e))
     
     def buildServerReply(self):
         header = 'HTTP/1.1 101 Switching Protocols'
-        answerAttributes = {'Upgrade': 'websocket', 'Connection': 'Upgrade'}
+        answerAttributes = {'Upgrade': 'websocket',
+                            'Connection': 'Upgrade'}
         
         #calculate 'Sec-WebSocket-Accept'
         assert 'Sec-WebSocket-Key' in self.attr
-        shaedKey = sha.new("%s%s"%(self.attr['Sec-WebSocket-Key'],GUID))
+        shaedKey = sha1("%s%s" % (self.attr['Sec-WebSocket-Key'], GUID))
         replyKey = base64.b64encode(shaedKey.digest())
-        answerAttributes.update({'Sec-WebSocket-Accept':replyKey})
+        answerAttributes.update({'Sec-WebSocket-Accept': replyKey})
         
-        hdr = HTTPHeader(header,answerAttributes)
+        hdr = HTTPHeader(header, answerAttributes)
         return hdr
         
 
@@ -94,7 +99,7 @@ class DefaultHTTPClientHeader(HTTPHeader):
                         'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',\
                         'Origin': 'http://example.com',\
                         'Sec-WebSocket-Protocol': 'chat, superchat',\
-                        'Sec-WebSocket-Version': 13}
+                        'Sec-WebSocket-Version': '13'}
 
 
 class Frame(object):
