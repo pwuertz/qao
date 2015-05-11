@@ -38,9 +38,9 @@ class TestMessageBus(unittest.TestCase):
             self.messageBus.connection.waitForBytesWritten()
             for client in self.server.clients:
                 client.connection.waitForBytesWritten()
-            time.sleep(0.01)
+            time.sleep(0.02)
             app.processEvents()
-
+        pass
 
     def testPublish(self):
         # Assert

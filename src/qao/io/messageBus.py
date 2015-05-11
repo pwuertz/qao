@@ -34,8 +34,8 @@ to a specific topic you want to receive callbacks for::
 
     # run qt main loop
 """
-import argparse
 import six
+import argparse
 
 if __name__ == "__main__":
     """
@@ -127,11 +127,13 @@ class MessageBusCommunicator(QtCore.QObject):
 
     def _send(self, rawData, blocking=False):
         if not isinstance(rawData, bytes):
-            rawData = bytes(rawData.encode())
+            rawData = six.b(rawData)
+            pass
         stream = QtCore.QDataStream(self.connection)
         if blocking:
             while self.connection.bytesToWrite() > 0:
                 self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
+        print('_send', type(rawData), rawData)
         return stream.writeRawData(rawData)
 
     def _sendFrame_(self, data, opCode):
@@ -140,7 +142,8 @@ class MessageBusCommunicator(QtCore.QObject):
         nWritten = self._send(frm.build())
 
     def _sendPacket(self, data, binary=False):
-        if len(data) <= 0: return
+        if len(data) <= 0:
+            return
         opCode = websocket.OPCODE_BINARY if binary else websocket.OPCODE_ASCII
         dataSer = jsonEncoder.dumps(data, separators=(',', ':'), sort_keys=True)
         self._sendFrame_(dataSer, opCode)
@@ -153,18 +156,22 @@ class MessageBusCommunicator(QtCore.QObject):
                         line = self.connection.readLine()
                         if QT_API == QT_API_PYQTv1:
                             line = str(QtCore.QString(line))
+                        elif isinstance(line, QtCore.QByteArray):
+                            line = bytes(line).decode()
                         else:
                             line = str(line)
                         self.httpHeader.parser.send(line)
                     except StopIteration:
-                        self.handshakeDone=True
+                        self.handshakeDone = True
                         self._handleHeaderReceived(self.httpHeader)
                         break
             else:
                 try:
                     if self.connection.bytesAvailable() < self.neededBytes:
                         return
-                    self.neededBytes = self.currentFrame.parser.send(str(self.connection.read(self.neededBytes)))
+                    line = self.connection.read(self.neededBytes)
+                    print('hrr', type(line), line)
+                    self.neededBytes = self.currentFrame.parser.send(line)
                 except StopIteration:
                     self._handleFrame_(self.currentFrame)
                     self.currentFrame = websocket.Frame()
@@ -187,7 +194,7 @@ class MessageBusCommunicator(QtCore.QObject):
             return
 
         if frm.opCode == websocket.OPCODE_ASCII or frm.opCode == websocket.OPCODE_BINARY:
-            self.incompleteData = "%s%s" % (self.incompleteData, frm.data)
+            self.incompleteData = "%s%s" % (self.incompleteData, six.u(frm.data))
             if frm.fin == 1:
                 self._handleNewPacket(self.incompleteData)
                 self.incompleteData = ''

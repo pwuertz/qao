@@ -4,7 +4,7 @@
 Ensure that the messageBusCommunicator is working as expected
 by injecting mocking methods.
 """
-import json
+import six
 import unittest
 from qao.io import websocket, jsonEncoder
 from qao.gui.qt import QtCore
@@ -20,9 +20,9 @@ class MockConnection(QtCore.QIODevice):
     def open(self, openMode):
         return True
 
-    def write(self, bytes):
-        self.written += bytes
-        return len(bytes)
+    def write(self, byte):
+        self.written += byte
+        return len(byte)
 
     def bytesAvailable(self):
         return len(self.readBuffer)
@@ -115,6 +115,9 @@ class TestMessageBusCommunicator(unittest.TestCase):
 
         # pipe write to read buffer
         def write(bytes):
+            if isinstance(bytes, str):
+                # bytes = bytes.encode()
+                pass
             com.connection.readBuffer += bytes
             com._handleReadyRead()
             return len(bytes)

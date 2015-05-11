@@ -1,6 +1,7 @@
 import base64
 import struct
 import numpy as np
+import six
 
 try:
     import sha
@@ -160,20 +161,26 @@ class Frame(object):
         print "-> MASK: ", self.mask
         print "-> LEN: %i"%self.length
         """
-
         return ''.join(byteList) + self.payload
 
     def _parse(self):
-        recvData = (yield 2)
+        if six.PY2:
+            recvData = (yield 2)
+            m0, m1 = ord(recvData[0]), ord(recvData[1])
+        else:
+            recvData = (yield 2)
+            if isinstance(recvData, str):
+                m0, m1 = ord(recvData[0]), ord(recvData[1])
+            else:
+                m0, m1 = recvData[0], recvData[1]
 
-        self.fin            = (ord(recvData[0]) & 0b10000000) >> 7 
-        self.rsv1           = (ord(recvData[0]) & 0b01000000) >> 6
-        self.rsv2           = (ord(recvData[0]) & 0b00100000) >> 5
-        self.rsv3           = (ord(recvData[0]) & 0b00010000) >> 4
-        self.opCode         = (ord(recvData[0]) & 0b00001111)
-        self.maskBit        = (ord(recvData[1]) & 0b10000000) >> 7
-        self.length         = (ord(recvData[1]) & 0b01111111)
-
+        self.fin            = (m0 & 0b10000000) >> 7
+        self.rsv1           = (m0 & 0b01000000) >> 6
+        self.rsv2           = (m0 & 0b00100000) >> 5
+        self.rsv3           = (m0 & 0b00010000) >> 4
+        self.opCode         = (m0 & 0b00001111)
+        self.maskBit        = (m1 & 0b10000000) >> 7
+        self.length         = (m1 & 0b01111111)
         if self.length == 126:
             self.length = struct.unpack(">H", (yield 2))[0]
 
