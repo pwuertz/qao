@@ -123,7 +123,7 @@ class MessageBusCommunicator(QtCore.QObject):
         self.neededBytes = next(self.currentFrame.parser)
         self.httpHeader = websocket.HTTPHeader()
         self.handshakeDone = False
-        self.incompleteData = ''
+        self.incompleteData = b''
 
     def _send(self, rawData, blocking=False):
         if not isinstance(rawData, bytes):
@@ -133,7 +133,6 @@ class MessageBusCommunicator(QtCore.QObject):
         if blocking:
             while self.connection.bytesToWrite() > 0:
                 self.connection.waitForBytesWritten(DEFAULT_TIMEOUT)
-        print('_send', type(rawData), rawData)
         return stream.writeRawData(rawData)
 
     def _sendFrame_(self, data, opCode):
@@ -170,7 +169,6 @@ class MessageBusCommunicator(QtCore.QObject):
                     if self.connection.bytesAvailable() < self.neededBytes:
                         return
                     line = self.connection.read(self.neededBytes)
-                    print('hrr', type(line), line)
                     self.neededBytes = self.currentFrame.parser.send(line)
                 except StopIteration:
                     self._handleFrame_(self.currentFrame)
@@ -194,10 +192,12 @@ class MessageBusCommunicator(QtCore.QObject):
             return
 
         if frm.opCode == websocket.OPCODE_ASCII or frm.opCode == websocket.OPCODE_BINARY:
-            self.incompleteData = "%s%s" % (self.incompleteData, six.u(frm.data))
+            self.incompleteData += frm.data
             if frm.fin == 1:
+                if six.PY3 and isinstance(self.incompleteData, bytes):
+                    self.incompleteData = self.incompleteData.decode()
                 self._handleNewPacket(self.incompleteData)
-                self.incompleteData = ''
+                self.incompleteData = b''
 
     def _handleNewPacket(self):
         raise NotImplementedError("Implement _handleNewPacket()")

@@ -14,13 +14,15 @@ from qao.io.messageBus import MessageBusCommunicator
 class MockConnection(QtCore.QIODevice):
     def __init__(self):
         super(MockConnection, self).__init__()
-        self.readBuffer = ""
-        self.written = ""
+        self.readBuffer = b''
+        self.written = b''
 
     def open(self, openMode):
         return True
 
     def write(self, byte):
+        if isinstance(byte, str) and six.PY3:
+            byte = six.b(byte)
         self.written += byte
         return len(byte)
 
@@ -84,12 +86,12 @@ class TestMessageBusCommunicator(unittest.TestCase):
 
         # Assert
         def handleFrame(frm):
-            self.assertEqual(frm.data, data, "Read did not work properly")
+            self.assertEqual(frm.data, six.b(data), "Read did not work properly")
         com._handleFrame_ = handleFrame
 
         # Act
         com.connection.readBuffer = com.connection.written
-        com._handleReadyRead()
+        self.assertRaises(StopIteration, com._handleReadyRead(), "Missing end of parser")
 
     def test_handleReadyRead_binary(self):
         # Arrange
@@ -100,12 +102,12 @@ class TestMessageBusCommunicator(unittest.TestCase):
 
         # Assert
         def handleFrame(frm):
-            self.assertEqual(frm.data, data, "Read did not work properly")
+            self.assertEqual(frm.data, six.b(data), "Read did not work properly")
         com._handleFrame_ = handleFrame
 
         # Act
         com.connection.readBuffer = com.connection.written
-        com._handleReadyRead()
+        self.assertRaises(StopIteration, com._handleReadyRead(), "Missing end of parser")
 
     def test_handleFrame(self):
         # Arrange
@@ -116,8 +118,7 @@ class TestMessageBusCommunicator(unittest.TestCase):
         # pipe write to read buffer
         def write(bytes):
             if isinstance(bytes, str):
-                # bytes = bytes.encode()
-                pass
+                bytes = six.b(bytes)
             com.connection.readBuffer += bytes
             com._handleReadyRead()
             return len(bytes)
