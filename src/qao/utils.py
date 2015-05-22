@@ -412,6 +412,17 @@ def angular_mean(data, center):
     radialprofile = tbin / nr
     return radialprofile
 
+def running_mean(data, npoints):
+    """
+    Calculate the running mean of `data` using an averaging window size
+    of `npoints`.
+    
+    :param data: (ndarray) 1-dim data set to calculate the running average for.
+    :param npoints: (int) width of the averaging window.
+    """ 
+    y = np.convolve(data,1.0/npoints*np.ones(npoints),mode="same")
+    return y[npoints/2:-npoints/2]
+
 def npsavebz(fname, d):
     """
     Save a numpy array to a bz2 compressed file.
