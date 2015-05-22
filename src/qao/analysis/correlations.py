@@ -1,3 +1,11 @@
+"""
+Correlations
+=================
+
+The :mod:`correlations` module contains functions to find spatial and
+temporal correlations in signals.
+"""
+
 import numpy as np
 from scipy.signal import fftconvolve
 
