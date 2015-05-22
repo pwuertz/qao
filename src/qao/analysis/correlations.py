@@ -58,7 +58,7 @@ def g2(meas, startRunIndex = None, stopRunIndex = None, verbose = False, mode="f
     # return normalized g2 by mean autocorrelation and g2_offset
     return autocorr_mean / autocorr_all_mean / g2_offset
     
-def g2_timeDiffs(timeDiffArray, bins):
+def g2_timeDiffs(timeDiffArray, bins, verbose = False):
     """
     Alternative method to calculate the temporal (1-dim) g2 function.
     This approach calculates all occuring time differences in the input
@@ -75,14 +75,16 @@ def g2_timeDiffs(timeDiffArray, bins):
     :returns: (ndarray tau, ndarray g2) 1-dim g2 correlation function.
     """
     meanCountsPerBin = 0
+    runs = float(len(timeDiffArray))
     difflist = []
-    for timeDiffs in timeDiffArray:
+    for i,timeDiffs in enumerate(timeDiffArray):
+        if verbose:
+            print "Calculate time differences for run %i/%i"%(i,runs)
         meanCountsPerBin += len(timeDiffs)/float(len(bins))
         difflist += [timeDiffs[i+1:]-timeDiffs[i] for i in xrange(0,len(timeDiffs)-1)]
     
     difflist = np.hstack(difflist)
     h, edges = np.histogram(difflist,bins)
-    runs = float(len(timeDiffArray))
     h = h/runs
     meanCountsPerBin = meanCountsPerBin/runs
     
