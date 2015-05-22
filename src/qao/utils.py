@@ -391,6 +391,27 @@ def parab_interpolation(data, xi, yi):
     
     return xi+x0, yi+y0, z0
 
+def angular_mean(data, center):
+    """
+    Calculate the radial mean value of a 2D signal around a center point.
+
+    For a given `data` array and given center coordinates, this function
+    calculates the radial mean value by averaging over all angles.
+    This code is copied from `stackoverflow <http://stackoverflow.com/questions/21242011/most-efficient-way-to-calculate-radial-profile>`
+
+    :param data: (ndarray) 2d-array containing the (image) data.
+    :param center: (tuple) coordinates (xi, yi) of the center point.
+    :returns: (ndarray) radially integrated mean value around the center point.
+    """
+    y, x = np.indices((data.shape))
+    r = np.sqrt((x - center[0])**2 + (y - center[1])**2)
+    r = r.astype(np.int)
+
+    tbin = np.bincount(r.ravel(), data.ravel())
+    nr = np.bincount(r.ravel())
+    radialprofile = tbin / nr
+    return radialprofile
+
 def npsavebz(fname, d):
     """
     Save a numpy array to a bz2 compressed file.
