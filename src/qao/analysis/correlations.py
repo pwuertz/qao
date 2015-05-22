@@ -62,7 +62,8 @@ def g2_timeDiffs(timeDiffArray, bins, verbose = False):
     """
     Alternative method to calculate the temporal (1-dim) g2 function.
     This approach calculates all occuring time differences in the input
-    signal and creates a binned histogram over those. Normalizing this
+    signal and creates a binned histogram over those. Note that this is
+    equivalent to calculating the autocorrelation function. Normalizing this
     to the average number of counts per histogram bin size squared and to
     the number of possibilities for each time difference.
 
