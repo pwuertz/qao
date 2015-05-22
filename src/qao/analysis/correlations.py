@@ -47,13 +47,13 @@ def g2(meas, startRunIndex = None, stopRunIndex = None, verbose = False, mode="f
     # calculate autocorrelation for mean of data
     autocorr_all_mean = fftconvolve(meas.mean(axis=0), meas.mean(axis=0)[[slice(None, None, -1)]*(len(meas.shape)-1)], mode=mode)
     
-    # calculate g2 contribution from total atom number fluctuations
+    # calculate g2 contribution from total atom number fluctuations as derived in peters PhD thesis
     N_total = meas.sum(axis=tuple(range(1,len(shape))))
     
     n = N_total.mean()
     s = N_total.std()
     
-    g2_offset = 1 + (s**2 - n)/n**2
+    g2_offset = (N_total**2).mean()/(n + n**2) / n**2
     
     # return normalized g2 by mean autocorrelation and g2_offset
     return autocorr_mean / autocorr_all_mean / g2_offset
