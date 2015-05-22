@@ -93,3 +93,17 @@ def g2_timeDiffs(timeDiffArray, bins, verbose = False):
     g2 = h/meanCountsPerBin**2/(len(bins)*(1-tau/edges[-1]))
     
     return tau, g2
+
+def mandelQ(data, axis=0):
+    """
+    Return the Mandel Q factor along one axis for a n-dim data set.
+
+    .. math::
+
+        Q = \\frac{ \\bigl< n^2 \\bigr> - \\bigl< n \\bigr>^2 }{ \\bigl< n \\bigr> } - 1
+
+    :param data: (ndarray) n-dim.
+    :param axis: (int) axis along which Q should be calculated.
+    :returns: (ndarray) (n-1)-dim array containing Q values.
+    """
+    return ((data**2).mean(axis=axis)-(data.mean(axis=axis))**2)/(data.mean(axis=axis)) - 1
