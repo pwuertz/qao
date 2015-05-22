@@ -18,7 +18,7 @@ def g2(meas, startRunIndex = None, stopRunIndex = None, verbose = False, mode="f
 
     .. math::
 
-        g^{(2)} = \\frac{\bigl<\\mathrmrm{autocorr}(I(\\vec{x}))\\bigr>_\mathrm{runs}}{\\mathrm{autocorr}(\\bigl<I(\\vec{x}\\bigr>_\\mathrm{runs})} \\frac{1}{1 + \\frac{\sigma^2 - N}{N^2}}
+        g^{(2)} = \\frac{\bigl<\\mathrm{autocorr}(I(\\vec{x}))\\bigr>_\mathrm{runs}}{\\mathrm{autocorr}(\\bigl<I(\\vec{x}\\bigr>_\\mathrm{runs})} \\frac{1}{1 + \\frac{\sigma^2 - N}{N^2}}
 
     :param meas: (list) list of n-dim ndarrays containing the binned data.
     :param startRunIndex: (int) first list entry to consider for g2 calculation.
@@ -68,7 +68,7 @@ def g2_timeDiffs(timeDiffArray, bins):
 
     .. math::
 
-        g^{(2)} = \\frac{\bigl<\\mathrmrm{hist}(\\Delta t)\\bigr>_\\mathrm{runs}}{\\bigl<N_\\mathrm{counts}/N_\\mathrm{bins}\\bigr>_\\mathrm{runs}^2} \\frac{1}{1 - \\frac{\\tau}{\\tau_\\mathrm{max}}}
+        g^{(2)} = \\frac{\bigl<\\mathrm{hist}(\\Delta t)\\bigr>_\\mathrm{runs}}{\\bigl<N_\\mathrm{counts}/N_\\mathrm{bins}\\bigr>_\\mathrm{runs}^2} \\frac{1}{1 - \\frac{\\tau}{\\tau_\\mathrm{max}}}
 
     :param timeDiffArray: (list) list of n-dim ndarrays containing the binned data.
     :param bins: (ndarray) bin edges.
