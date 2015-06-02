@@ -107,3 +107,17 @@ def mandelQ(data, axis=0):
     :returns: (ndarray) (n-1)-dim array containing Q values.
     """
     return ((data**2).mean(axis=axis)-(data.mean(axis=axis))**2)/(data.mean(axis=axis)) - 1
+
+def fano(data, axis=0):
+    """
+    Return the Fano factor along one axis for a n-dim data set.
+
+    .. math::
+
+        F = \\frac{ \\bigl< n^2 \\bigr> }{ \\bigl< n \\bigr> } 
+
+    :param data: (ndarray) n-dim.
+    :param axis: (int) axis along which F should be calculated.
+    :returns: (ndarray) (n-1)-dim array containing F values.
+    """
+    return data.std(axis=axis)**2/data.mean(axis=axis)
