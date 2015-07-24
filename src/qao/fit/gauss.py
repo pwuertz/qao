@@ -133,6 +133,7 @@ class Gauss1DAsym(LevmarFitter):
     .. math::
 
         f_l(x) = A\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma_1^2}\right] + \text{off}
+
         f_r(x) = A\cdot\exp\left[-\frac{(x-x_0)^2}{2 \sigma_2^2}\right] + \text{off}
     
     The first function is used for all x < x_0, the second for all x >= x_0.

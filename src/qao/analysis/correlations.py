@@ -58,12 +58,11 @@ def g2(meas, startRunIndex = None, stopRunIndex = None, verbose = False, mode="f
     # return normalized g2 by mean autocorrelation and g2_offset
     return autocorr_mean / autocorr_all_mean / g2_offset
     
-def g2_timeDiffs(timeDiffArray, bins, verbose = False):
+def g2_timeDiffs(timeDiffArray, bins):
     """
     Alternative method to calculate the temporal (1-dim) g2 function.
     This approach calculates all occuring time differences in the input
-    signal and creates a binned histogram over those. Note that this is
-    equivalent to calculating the autocorrelation function. Normalizing this
+    signal and creates a binned histogram over those. Normalizing this
     to the average number of counts per histogram bin size squared and to
     the number of possibilities for each time difference.
 
@@ -76,16 +75,14 @@ def g2_timeDiffs(timeDiffArray, bins, verbose = False):
     :returns: (ndarray tau, ndarray g2) 1-dim g2 correlation function.
     """
     meanCountsPerBin = 0
-    runs = float(len(timeDiffArray))
     difflist = []
-    for i,timeDiffs in enumerate(timeDiffArray):
-        if verbose:
-            print "Calculate time differences for run %i/%i"%(i,runs)
+    for timeDiffs in timeDiffArray:
         meanCountsPerBin += len(timeDiffs)/float(len(bins))
         difflist += [timeDiffs[i+1:]-timeDiffs[i] for i in xrange(0,len(timeDiffs)-1)]
     
     difflist = np.hstack(difflist)
     h, edges = np.histogram(difflist,bins)
+    runs = float(len(timeDiffArray))
     h = h/runs
     meanCountsPerBin = meanCountsPerBin/runs
     
@@ -107,17 +104,3 @@ def mandelQ(data, axis=0):
     :returns: (ndarray) (n-1)-dim array containing Q values.
     """
     return ((data**2).mean(axis=axis)-(data.mean(axis=axis))**2)/(data.mean(axis=axis)) - 1
-
-def fano(data, axis=0):
-    """
-    Return the Fano factor along one axis for a n-dim data set.
-
-    .. math::
-
-        F = \\frac{ \\bigl< n^2 \\bigr> }{ \\bigl< n \\bigr> } 
-
-    :param data: (ndarray) n-dim.
-    :param axis: (int) axis along which F should be calculated.
-    :returns: (ndarray) (n-1)-dim array containing F values.
-    """
-    return data.std(axis=axis)**2/data.mean(axis=axis)
