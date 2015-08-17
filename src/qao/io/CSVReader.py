@@ -56,7 +56,7 @@ class CSVReader:
         
     def setMask(self,mask):
         dtype  = np.dtype({'names': self.header, 'formats': [object]*len(self.header)})
-        rows   = [row for row in self.rows if float(row[self.header.index(mask[0])]) == mask[1]]
+        rows   = [row for row in self.rows if safeComp(row[self.header.index(mask[0])],mask[1])]
         self.data = np.empty(len(rows), dtype=dtype)
         for i in range(len(rows)): self.data[i] = tuple(rows[i])
 
