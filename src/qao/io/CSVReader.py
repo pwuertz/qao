@@ -54,9 +54,13 @@ class CSVReader:
         for i in range(len(self.rows)): self.data[i] = tuple(self.rows[i])
         
         
-    def setMask(self,mask):
+    def setMask(self,masks):
+        #if masks is a list rather than a dict convert it to dict.
+        if type(masks) == list: masks = dict(zip(masks[0::2], masks[1::2]))
         dtype  = np.dtype({'names': self.header, 'formats': [object]*len(self.header)})
-        rows   = [row for row in self.rows if safeComp(row[self.header.index(mask[0])],mask[1])]
+        rows = self.rows
+        for fieldName, value in masks.iteritems():
+            rows   = [row for row in self.rows if safeComp(row[self.header.index(fieldName)],value)]
         self.data = np.empty(len(rows), dtype=dtype)
         for i in range(len(rows)): self.data[i] = tuple(rows[i])
 
