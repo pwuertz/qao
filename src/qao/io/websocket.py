@@ -129,16 +129,21 @@ class Frame(object):
         byteList[0] = chr(byteList[0])
         
         # check whether to set the mask bit
+        # opcode first bit of second byte
         if self.mask is not None:
             byteList[1] = 1 << 7
         else:
             byteList[1] = 0
         
         # check what length to write
+        # last 7 bits of the second byte for length.
+        # 127 reserved for length > 2**16
+        # 126 reserved for length > 126
         if self.length > 2**16:
             byteList[1] += 127
             byteList.extend(struct.pack(">Q",self.length))
-        elif self.length >= 2**7:
+        elif self.length >= 2**7 - 2:
+            # 2**7 - 2 = 126
             byteList[1] += 126
             byteList.extend(struct.pack(">H",self.length))
         else:
